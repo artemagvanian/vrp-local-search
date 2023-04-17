@@ -9,13 +9,13 @@ public class Main
 {  
   public static void main(String[] args) 
   {
-	if(args.length == 0)
-	{
-		System.out.println("Usage: java Main <file>");
-		return;
-	}
+//	if(args.length == 0)
+//	{
+//		System.out.println("Usage: java Main <file>");
+//		return;
+//	}
 
-	String input = args[0];
+	String input = "5_4_10.vrp";//args[0];
 	Path path = Paths.get(input);
 	String filename = path.getFileName().toString();
 	System.out.println("Instance: " + input);
@@ -23,6 +23,7 @@ public class Main
 	Timer watch = new Timer();
 	watch.start();
 	VRPInstance instance = new VRPInstance(input);
+	instance.completeModel();
 	watch.stop();
 
 	System.out.println("{\"Instance\": \"" + filename +
