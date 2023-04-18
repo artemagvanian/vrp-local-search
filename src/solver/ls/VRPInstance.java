@@ -192,6 +192,7 @@ public class VRPInstance {
       // Solution.
       if (cplex.solve()) {
         System.out.println("Num Vehicles: " + numVehicles);
+        System.out.println("Num Customers: " + numCustomers);
         System.out.println("Objective Value: " + cplex.getObjValue());
         double totalSum = 0;
         for (int i = 0; i < numCustomers + 1; i++) {
@@ -212,12 +213,12 @@ public class VRPInstance {
         }
         System.out.println("Objective Check: " + totalSum / 2);
 
-        for (int i = 0; i < numCustomers + 1; i++) {
-          for (int j = 0; j < numCustomers + 1; j++) {
-            System.out.print((int)distances[i][j] + " ");
-          }
-          System.out.println();
-        }
+//        for (int i = 0; i < numCustomers + 1; i++) {
+//          for (int j = 0; j < numCustomers + 1; j++) {
+//            System.out.print((int)distances[i][j] + " ");
+//          }
+//          System.out.println();
+//        }
 
         return cplex.getObjValue();
       } else {
@@ -233,14 +234,12 @@ public class VRPInstance {
 
     // Calculate distances for depot.
     for (int j = 1; j < numCustomers+1; j++) {
-      distances[0][j] = distance(xCoordOfCustomer[j-1], 0, yCoordOfCustomer[j-1], 0);
+      double d = distance(xCoordOfCustomer[j-1], 0, yCoordOfCustomer[j-1], 0);
+      distances[0][j] = d;
+      distances[j][0] = d;
     }
 
-    for (int j = 1; j < numCustomers+1; j++) {
-      distances[j][0] = distance(xCoordOfCustomer[j-1], 0, yCoordOfCustomer[j-1], 0);
-    }
-
-      // Calculate distances for everything else.
+    // Calculate distances for everything else (inefficiently).
     for (int i = 1; i < numCustomers + 1; i++) {
       for (int j = 1; j < numCustomers + 1; j++) {
         distances[i][j] = distance(xCoordOfCustomer[i-1], xCoordOfCustomer[j-1],
@@ -249,14 +248,14 @@ public class VRPInstance {
     }
 
     // Sanity check
-    System.out.println("****");
-    for (int i = 0; i < numCustomers + 1; i++) {
-      for (int j = 0; j < numCustomers + 1; j++) {
-        System.out.print((int)distances[i][j] + " ");
-      }
-      System.out.println();
-    }
-    System.out.println("****");
+//    System.out.println("****");
+//    for (int i = 0; i < numCustomers + 1; i++) {
+//      for (int j = 0; j < numCustomers + 1; j++) {
+//        System.out.print((int)distances[i][j] + " ");
+//      }
+//      System.out.println();
+//    }
+//    System.out.println("****");
 
     return distances;
   }
