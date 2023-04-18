@@ -191,12 +191,24 @@ public class VRPInstance {
       if (cplex.solve()) {
         System.out.println("Num Vehicles: " + numVehicles);
         System.out.println("Objective Value: " + cplex.getObjValue());
+        double totalSum = 0;
         for (int i = 0; i < numCustomers + 1; i++) {
-          for (int j = i + 1; j < numCustomers + 1; j++) {
-            System.out.print(cplex.getValue(nTraversals[i][j]) + " ");
+          for (int j = 0; j < numCustomers + 1; j++) {
+            if (i < j) {
+              int indicator = (int) Math.round(cplex.getValue(nTraversals[i][j]));
+              System.out.print(indicator + ", ");
+              totalSum += indicator * distances[i][j];
+            } else if (i > j) {
+              int indicator = (int) Math.round(cplex.getValue(nTraversals[j][i]));
+              System.out.print(indicator + ", ");
+              totalSum += indicator * distances[j][i];
+            } else {
+              System.out.print(0 + ", ");
+            }
           }
           System.out.println();
         }
+        System.out.println("Objective Check: " + totalSum / 2);
 
         return cplex.getObjValue();
       } else {
@@ -270,7 +282,9 @@ public class VRPInstance {
         for (int j = 0; j < customers.size(); j++) {
           totalLoad.addTerm(customerVehicleAssignment[j][i], customers.get(j));
         }
-        bppModel.addLe(totalLoad, vehicleCapacity);
+        IloLinearNumExpr maxLoad = bppModel.linearNumExpr();
+        maxLoad.addTerm(vehicleCapacity, useVehicles[i]);
+        bppModel.addLe(totalLoad, maxLoad);
       }
 
       if (bppModel.solve()) {
