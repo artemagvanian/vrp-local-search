@@ -44,7 +44,8 @@ public class VRPInstance {
     xCoordOfCustomer = new double[numCustomers];
     yCoordOfCustomer = new double[numCustomers];
 
-    for (int i = 0; i < numCustomers; i++) {
+    // depot
+    for (int i =0; i < numCustomers; i++){
       demandOfCustomer[i] = read.nextInt();
       xCoordOfCustomer[i] = read.nextDouble();
       yCoordOfCustomer[i] = read.nextDouble();
@@ -54,6 +55,7 @@ public class VRPInstance {
       System.out.println(
           demandOfCustomer[i] + " " + xCoordOfCustomer[i] + " " + yCoordOfCustomer[i]);
     }
+
     distances = precalculateDistances();
   }
 
@@ -210,6 +212,13 @@ public class VRPInstance {
         }
         System.out.println("Objective Check: " + totalSum / 2);
 
+        for (int i = 0; i < numCustomers + 1; i++) {
+          for (int j = 0; j < numCustomers + 1; j++) {
+            System.out.print((int)distances[i][j] + " ");
+          }
+          System.out.println();
+        }
+
         return cplex.getObjValue();
       } else {
         throw new IllegalArgumentException("Infeasible VRP model.");
@@ -223,25 +232,31 @@ public class VRPInstance {
     double[][] distances = new double[numCustomers + 1][numCustomers + 1];
 
     // Calculate distances for depot.
-    for (int j = 0; j < numCustomers; j++) {
-      distances[0][j] = distance(xCoordOfCustomer[j], 0, yCoordOfCustomer[j], 0);
+    for (int j = 1; j < numCustomers+1; j++) {
+      distances[0][j] = distance(xCoordOfCustomer[j-1], 0, yCoordOfCustomer[j-1], 0);
     }
 
-    // Calculate distances for everything else.
+    for (int j = 1; j < numCustomers+1; j++) {
+      distances[j][0] = distance(xCoordOfCustomer[j-1], 0, yCoordOfCustomer[j-1], 0);
+    }
+
+      // Calculate distances for everything else.
     for (int i = 1; i < numCustomers + 1; i++) {
-      for (int j = i + 1; j < numCustomers + 1; j++) {
-        distances[i][j] = distance(xCoordOfCustomer[i - 1], xCoordOfCustomer[j - 1],
-            yCoordOfCustomer[i - 1], yCoordOfCustomer[j - 1]);
+      for (int j = 1; j < numCustomers + 1; j++) {
+        distances[i][j] = distance(xCoordOfCustomer[i-1], xCoordOfCustomer[j-1],
+            yCoordOfCustomer[i-1], yCoordOfCustomer[j-1]);
       }
     }
 
-    // Sanity check.
-    for (int i = 1; i < numCustomers + 1; i++) {
-      for (int j = i + 1; j < numCustomers + 1; j++) {
-        System.out.print(distances[i][j] + " ");
+    // Sanity check
+    System.out.println("****");
+    for (int i = 0; i < numCustomers + 1; i++) {
+      for (int j = 0; j < numCustomers + 1; j++) {
+        System.out.print((int)distances[i][j] + " ");
       }
       System.out.println();
     }
+    System.out.println("****");
 
     return distances;
   }
