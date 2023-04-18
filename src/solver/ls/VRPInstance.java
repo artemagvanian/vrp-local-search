@@ -102,10 +102,10 @@ public class VRPInstance {
           cplex.addMinimize(totalCost);
 
           // 2. Each customer is visited exactly once
-          for (int i = 1; i <= numCustomers; i++) {
+          for (int i = 1; i < numCustomers+1; i++) {
               IloLinearNumExpr visitOnce = cplex.linearNumExpr();
               // ingoing edges (add them)
-              for (int j = 0; j <= numCustomers; j++) {
+              for (int j = 1; j < numCustomers+1; j++) {
                   if (i != j) {
                       // travelling = a vehicle goes on that path
                       // for a customer i, we add all the times any customer j travels to i
@@ -157,12 +157,12 @@ public class VRPInstance {
 //          }
 
           // 3. Each route starts and ends at the depot
-//          IloLinearNumExpr sumEdges = cplex.linearNumExpr();
-//          for (int i = 1; i <= numCustomers; i++) {
-//              sumEdges.addTerm(numTraversals[0][i], 1);
-//              sumEdges.addTerm(numTraversals[i][0], 1);
-//          }
-//          cplex.addEq(sumEdges, 2 * numVehicles);
+          IloLinearNumExpr sumEdges = cplex.linearNumExpr();
+          for (int i = 1; i <= numCustomers; i++) {
+              sumEdges.addTerm(numTraversals[0][i], 1);
+              sumEdges.addTerm(numTraversals[i][0], 1);
+          }
+          cplex.addEq(sumEdges, 2 * numVehicles);
 
           // 4.
           // 4. Capacity constraints
