@@ -19,7 +19,7 @@ public class Main {
     Timer watch = new Timer();
     watch.start();
     VRPInstance instance = new VRPInstance(input);
-    double objective = instance.solve();
+    double objective = instance.solve(false);
     watch.stop();
 
     System.out.println("{\"Instance\": \"" + filename +

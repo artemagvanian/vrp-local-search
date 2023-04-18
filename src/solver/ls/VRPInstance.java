@@ -84,7 +84,11 @@ public class VRPInstance {
     }
   }
 
-  public double solve() {
+  private static double distance(double x1, double x2, double y1, double y2) {
+    return Math.sqrt(Math.pow((x1 - x2), 2) + Math.pow((y1 - y2), 2));
+  }
+
+  public double solve(boolean useBppApproximation) {
     try {
       cplex = new IloCplex();
 
@@ -154,12 +158,17 @@ public class VRPInstance {
         // For each subset of size k.
         for (List<Integer> subset : subsets) {
           // Calculate the lower bound on the number of vehicles needed.
-          double q = 0;
-          for (int customer : subset) {
-            q += demandOfCustomer[customer - 1];
+          int minVehiclesNeeded;
+          if (useBppApproximation) {
+            double q = 0;
+            for (int customer : subset) {
+              q += demandOfCustomer[customer - 1];
+            }
+            // Calculate the simplified BPP.
+            minVehiclesNeeded = (int) Math.ceil(q / vehicleCapacity);
+          } else {
+            minVehiclesNeeded = minVehicles(subset);
           }
-          // Calculate the simplified BPP.
-          int minVehiclesNeeded = (int) Math.ceil(q / vehicleCapacity);
           // Add the RC constraint.
           IloLinearNumExpr rcExpr = cplex.linearNumExpr();
           for (int i : subset) { // For each customer selected in the subset.
@@ -191,14 +200,14 @@ public class VRPInstance {
 
         return cplex.getObjValue();
       } else {
-        throw new IllegalArgumentException("Infeasible model.");
+        throw new IllegalArgumentException("Infeasible VRP model.");
       }
     } catch (IloException e) {
       throw new RuntimeException(e);
     }
   }
 
-  public double[][] precalculateDistances() {
+  private double[][] precalculateDistances() {
     double[][] distances = new double[numCustomers + 1][numCustomers + 1];
 
     // Calculate distances for depot.
@@ -225,8 +234,53 @@ public class VRPInstance {
     return distances;
   }
 
-  public double distance(double x1, double x2, double y1, double y2) {
-    return Math.sqrt(Math.pow((x1 - x2), 2) + Math.pow((y1 - y2), 2));
+  private int minVehicles(List<Integer> customers) {
+    try (IloCplex bppModel = new IloCplex()) {
+      bppModel.setOut(null);
+      bppModel.setWarning(null);
+
+      IloNumVar[] useVehicles = bppModel.boolVarArray(numVehicles);
+      IloNumVar[][] customerVehicleAssignment = new IloNumVar[customers.size()][numVehicles];
+
+      for (int i = 0; i < customers.size(); i++) {
+        for (int j = 0; j < numVehicles; j++) {
+          customerVehicleAssignment[i][j] = bppModel.boolVar();
+        }
+      }
+
+      // Minimize number of vehicles (bins) used
+      IloLinearNumExpr totalVehicles = bppModel.linearNumExpr();
+      for (int i = 0; i < numVehicles; i++) {
+        totalVehicles.addTerm(1, useVehicles[i]);
+      }
+      bppModel.addMinimize(totalVehicles);
+
+      // Enforce each customer (item) being assigned to only one vehicle (bin)
+      for (int i = 0; i < customers.size(); i++) {
+        IloLinearNumExpr totalAssignments = bppModel.linearNumExpr();
+        for (int j = 0; j < numVehicles; j++) {
+          totalAssignments.addTerm(1, customerVehicleAssignment[i][j]);
+        }
+        bppModel.addEq(totalAssignments, 1);
+      }
+
+      // Enforce capacity constraints
+      for (int i = 0; i < numVehicles; i++) {
+        IloLinearNumExpr totalLoad = bppModel.linearNumExpr();
+        for (int j = 0; j < customers.size(); j++) {
+          totalLoad.addTerm(customerVehicleAssignment[j][i], customers.get(j));
+        }
+        bppModel.addLe(totalLoad, vehicleCapacity);
+      }
+
+      if (bppModel.solve()) {
+        return (int) Math.round(bppModel.getObjValue());
+      } else {
+        throw new IllegalArgumentException("Infeasible BPP model.");
+      }
+    } catch (IloException e) {
+      throw new RuntimeException(e);
+    }
   }
 
 }
