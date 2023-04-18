@@ -19,12 +19,15 @@ public class Main {
     Timer watch = new Timer();
     watch.start();
     VRPInstance instance = new VRPInstance(input);
-    double objective = instance.solve(false);
+    double objective = instance.solve(
+        true,
+        true,
+        false);
     watch.stop();
 
     System.out.println("{\"Instance\": \"" + filename +
         "\", \"Time\": " + String.format("%.2f", watch.getTime()) +
         ", \"Result\": \"" + String.format("%.2f", objective) + "\"" +
-        ", \"Solution\": \"NO-OPT\"}");
+        ", \"Solution\": \"REL\"}");
   }
 }
