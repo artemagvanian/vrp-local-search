@@ -3,6 +3,8 @@ package solver.ls;
 import java.io.File;
 import java.io.FileNotFoundException;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 import ilog.concert.IloException;
@@ -74,25 +76,19 @@ public class VRPInstance {
           // numCustomers + 1 (depot/home base)
           // number of times an edge was traversed
           IloNumVar[][] numTraversals = new IloNumVar[numCustomers+1][];
+//          numTraversals[0] = cplex.numVarArray(numCustomers+1, 0, 1, IloNumVarType.Int);
           for(int i = 0; i < numCustomers+1; i++) {
               numTraversals[i] = cplex.numVarArray(numCustomers+1, 0, 2, IloNumVarType.Int);
           }
 
-          // incident edges:
-          // Create 2D array of variables for edges between nodes
-//          IloNumVar[][] incidentEdges = new IloNumVar[numCustomers+1][];
-//          for (int i = 0; i < numCustomers+1; i++) {
-//              incidentEdges[i] = cplex.numVarArray(numCustomers+1, 0, 1, IloNumVarType.Int);
-//          }
-
-//          for (int i = 1; i < numCustomers+1; i++) {
-//              for (int j = 1; j < numCustomers+1; j++) {
-//                  cplex.add(cplex.ifThen()
-//              }
-//          }
+          // inner variables cannot take on value of 2
+          for(int i = 1; i < numCustomers+1; i++){
+              for (int j = 1; j < numCustomers+1; j++){
+                  cplex.addLe(numTraversals[i][j], 1);
+              }
+          }
 
           // 1. Minimize distance
-          // TODO: why is objective value 0 here?
           IloLinearNumExpr totalCost = cplex.linearNumExpr();
           for (int i = 0; i < numCustomers+1; i++) {
               for(int j = 0; j < numCustomers+1; j++){
@@ -101,27 +97,102 @@ public class VRPInstance {
           }
           cplex.addMinimize(totalCost);
 
-          // 2. Each customer is visited exactly once
-          for (int i = 1; i < numCustomers+1; i++) {
-              IloLinearNumExpr visitOnce = cplex.linearNumExpr();
-              // ingoing edges (add them)
-              for (int j = 1; j < numCustomers+1; j++) {
-                  if (i != j) {
-                      // travelling = a vehicle goes on that path
-                      // for a customer i, we add all the times any customer j travels to i
-                      visitOnce.addTerm(1.0, numTraversals[i][j]);
-                      // for the same customer i, we add all the times they travel somewhere else
-                      visitOnce.addTerm(1.0, numTraversals[j][i]);
-                  }
-              }
-              // outgoing edges
-//              for (int k = 0; k <= numCustomers; k++) {
-//                  if (i != k) {
-//                      visitOnce.addTerm(1.0, numTraversals[k][i]);
+
+          // *** 2. Each customer is visited exactly once
+//          for (int i = 1; i < numCustomers+1; i++) {
+//              IloLinearNumExpr visitOnce = cplex.linearNumExpr();
+//              // ingoing edges (add them)
+//              for (int j = 1; j < numCustomers+1; j++) {
+//                  if (i != j) {
+//                      // travelling = a vehicle goes on that path
+//                      // for a customer i, we add all the times any customer j travels to i
+//                      visitOnce.addTerm(1.0, numTraversals[i][j]);
+//                      // for the same customer i, we add all the times they travel somewhere else
+//                      visitOnce.addTerm(1.0, numTraversals[j][i]);
 //                  }
 //              }
-              cplex.addEq(visitOnce, 2.0);
+//              cplex.addEq(visitOnce, 2.0);
+//          }
+
+          // 2:
+          // Outgoing Edges
+          for (int i = 1; i <= numCustomers; i++) {
+              IloLinearNumExpr sumOutgoingEdges = cplex.linearNumExpr();
+              for (int j = 1; j <= numCustomers; j++) {
+                  if (i != j) {
+                      sumOutgoingEdges.addTerm(1.0, numTraversals[i][j]);
+                  }
+              }
+              cplex.addEq(sumOutgoingEdges, 1.0);
           }
+          // Ingoing edges
+          for (int i = 1; i <= numCustomers; i++) {
+              IloLinearNumExpr sumIncomingEdges = cplex.linearNumExpr();
+              for (int j = 1; j <= numCustomers; j++) {
+                  if (i != j) {
+                      sumIncomingEdges.addTerm(1.0, numTraversals[j][i]);
+                  }
+              }
+              cplex.addEq(sumIncomingEdges, 1.0);
+          }
+
+          // 3
+          IloLinearNumExpr returnToDepot = cplex.linearNumExpr();
+          // sum of all outgoing edges from the depot
+          for(int j = 1; j < numCustomers+1; j++) {
+              returnToDepot.addTerm(1.0, numTraversals[0][j]);
+          }
+          // sum of all incoming edges to the depot
+          for(int i = 1; i < numCustomers+1; i++) {
+              returnToDepot.addTerm(-1.0, numTraversals[i][0]);
+          }
+          // adding the constraint
+          cplex.addLe(returnToDepot, numVehicles);
+
+
+          // 4. Rounded Capacity (RC) constraints
+          for(int k = 2; k <= numCustomers; k++) {
+              // Get all subsets of customers of size k
+              List<List<Integer>> subsets = new ArrayList<>();
+              List<Integer> customers = new ArrayList<>();
+              for (int i = 1; i <= numCustomers; i++) {
+                  customers.add(i);
+              }
+              // get all subsets of customers
+              getSubsets(customers, subsets, k);
+
+              // for each subset of size k
+              for(List<Integer> subset : subsets) {
+                  // Calculate the lower bound on the number of vehicles needed
+                  double q = 0;
+                  for(int customer : subset) {
+                      q += demandOfCustomer[customer-1];
+                  }
+                  // calculate the simplified BPP
+                  int numVehicles = (int) Math.ceil(q / vehicleCapacity);
+                  // Add the RC constraint
+                  IloLinearNumExpr rcExpr = cplex.linearNumExpr();
+                  for(int i : subset) { // for each integer selected in the subset
+                      for(int j : customers) { // for each customer
+                          if(i != j) {
+                              rcExpr.addTerm(1.0, numTraversals[i][j]); // add this to the edge sum
+                          }
+                      }
+                  }
+                  cplex.addGe(rcExpr, numVehicles);
+              }
+          }
+
+//           3. Depot degree constraint
+//          for (int i = 1; i <= numCustomers; i++) {
+//              IloLinearNumExpr degree = cplex.linearNumExpr();
+//              for (int j = 0; j <= numCustomers; j++) {
+//                  if (i != j) {
+//                      degree.addTerm(1.0, numTraversals[i][j]);
+//                  }
+//              }
+//              cplex.addEq(degree, 2.0 * numVehicles);
+//          }
 //          for (int i = 1; i < numCustomers + 1; i++) {
 //              IloLinearNumExpr edgeSum = cplex.linearNumExpr();
 //              // if an edge is travelled, its incident
@@ -157,12 +228,12 @@ public class VRPInstance {
 //          }
 
           // 3. Each route starts and ends at the depot
-          IloLinearNumExpr sumEdges = cplex.linearNumExpr();
-          for (int i = 1; i <= numCustomers; i++) {
-              sumEdges.addTerm(numTraversals[0][i], 1);
-              sumEdges.addTerm(numTraversals[i][0], 1);
-          }
-          cplex.addEq(sumEdges, 2 * numVehicles);
+//          IloLinearNumExpr sumEdges = cplex.linearNumExpr();
+//          for (int i = 1; i <= numCustomers; i++) {
+//              sumEdges.addTerm(numTraversals[0][i], 1);
+//              sumEdges.addTerm(numTraversals[i][0], 1);
+//          }
+//          cplex.addEq(sumEdges, 2 * numVehicles);
 
           // 4.
           // 4. Capacity constraints
@@ -176,8 +247,37 @@ public class VRPInstance {
 //              }
 //              cplex.addLe(demand, vehicleCapacity);
 //          }
-
           // 4. Capacity constraints
+//          for (int S = 1; S < (1 << numCustomers); S++) {
+//              double sumDemands = 0.0;
+//              for (int i = 1; i <= numCustomers; i++) {
+//                  if ((S & (1 << (i - 1))) != 0) {
+//                      sumDemands += demandOfCustomer[i-1];
+//                  }
+//              }
+//
+//              int upperBound = (int) Math.ceil(sumDemands / vehicleCapacity);
+//              IloLinearNumExpr lhs = cplex.linearNumExpr();
+//              for (int i = 0; i <= numCustomers; i++) {
+//                  for (int j = 0; j <= numCustomers; j++) {
+//                      if (i != j && (S & (1 << (i - 1))) != 0 && (S & (1 << (j - 1))) != 0) {
+//                          lhs.addTerm(numTraversals[i][j], 2 * upperBound);
+//                      }
+//                  }
+//              }
+//              cplex.addGe(lhs, 2);
+//          }
+          // 4. Vehicle capacity constraints
+//          for (int s = 1; s <= numCustomers; s++) {
+//              IloLinearNumExpr demand = cplex.linearNumExpr();
+//              for (int t = 1; t <= numCustomers; t++) {
+//                  if (s != t) {
+//                      demand.addTerm(demandOfCustomer[s-1], numTraversals[s-1][t-1]);
+//                  }
+//              }
+//              cplex.addLe(demand, vehicleCapacity);
+//          }
+
 //          for (int subset = 1; subset < numCustomers; subset++) {
 //              for (int i = 1; i <= numCustomers; i++) {
 //                  if (i == subset) {
@@ -216,6 +316,7 @@ public class VRPInstance {
 //              cplex.addGe(capacityExpr, Math.ceil(cplex.getValue(packExpr) / Q));
 //          }
 
+          // *****
           // 5. Each edge between two customers is traversed at most once
           for (int i = 1; i <= numCustomers; i++) {
               for (int j = 1; j <= numCustomers; j++) {
@@ -252,17 +353,42 @@ public class VRPInstance {
       }
     }
 
+    public static void getSubsets(List<Integer> customers, List<List<Integer>> subsets, int k) {
+        int n = customers.size();
+        int[] subset = new int[k];
+
+        getSubsetsHelper(customers, subsets, subset, 0, n - 1, 0, k);
+    }
+
+    private static void getSubsetsHelper(List<Integer> customers, List<List<Integer>> subsets, int[] subset, int start, int end, int index, int k) {
+        if (index == k) {
+            List<Integer> subsetList = new ArrayList<>();
+            for (int i = 0; i < k; i++) {
+                subsetList.add(subset[i]);
+            }
+            subsets.add(subsetList);
+            return;
+        }
+
+        for (int i = start; i <= end && end - i + 1 >= k - index; i++) {
+            subset[index] = customers.get(i);
+            getSubsetsHelper(customers, subsets, subset, i + 1, end, index + 1, k);
+        }
+    }
+
     public double[][] precalculateGraph(){
         double[][] graph = new double[numCustomers+1][numCustomers+1];
 
         // calculate for depot
         for (int j = 0; j < numCustomers; j++) {
             graph[0][j] = calcDist(xCoordOfCustomer[j], 0, yCoordOfCustomer[j],0);
+
+            graph[j][0] = calcDist(xCoordOfCustomer[j], 0, yCoordOfCustomer[j],0);
         }
 
         // calculate for everything else
-        for (int i = 1; i < numCustomers+1; i++){
-            for (int j = 1; j < numCustomers+1; j++){
+        for (int i = 1; i < (numCustomers+1) ; i++){
+            for (int j = 1; j < (numCustomers+1) ; j++){
                 graph[i][j] = calcDist(xCoordOfCustomer[i-1], xCoordOfCustomer[j-1],
                         yCoordOfCustomer[i-1], yCoordOfCustomer[j-1]);
             }
