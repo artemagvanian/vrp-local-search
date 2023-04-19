@@ -22,7 +22,8 @@ public class Main {
     double objective = instance.solve(
         true,
         false,
-        false);
+        false,
+        10);
     watch.stop();
 
     System.out.println("{\"Instance\": \"" + filename +

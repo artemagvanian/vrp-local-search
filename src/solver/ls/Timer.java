@@ -1,48 +1,38 @@
 package solver.ls;
 
-public class Timer
-{
+public class Timer {
+
+  private final double nano = 1000000000.0;
   private long startTime;
   private long stopTime;
   private boolean running;
-  
-  private final double nano = 1000000000.0;
-  
-  public Timer()
-  {
+
+  public Timer() {
     super();
   }
 
-  public void reset()
-  {
+  public void reset() {
     this.startTime = 0;
     this.running = false;
   }
 
-  public void start()
-  {
+  public void start() {
     this.startTime = System.nanoTime();
     this.running = true;
   }
-  
-  public void stop()
-  {
-    if (running)
-    { 
+
+  public void stop() {
+    if (running) {
       this.stopTime = System.nanoTime();
       this.running = false;
     }
   }
-  
-  public double getTime()
-  {
+
+  public double getTime() {
     double elapsed;
-    if (running)
-    {
+    if (running) {
       elapsed = ((System.nanoTime() - startTime) / nano);
-    }
-    else
-    {
+    } else {
       elapsed = ((stopTime - startTime) / nano);
     }
     return elapsed;

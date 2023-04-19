@@ -7,7 +7,11 @@ import ilog.concert.IloNumVarType;
 import ilog.cplex.IloCplex;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Scanner;
+import java.util.Set;
 
 public class VRPInstance {
 
@@ -64,7 +68,7 @@ public class VRPInstance {
     System.out.println("Parsed data (demand, x, y): ");
     for (int i = 0; i < numCustomers; i++) {
       System.out.println(
-              demandOfCustomer[i] + " " + xCoordOfCustomer[i] + " " + yCoordOfCustomer[i]);
+          demandOfCustomer[i] + " " + xCoordOfCustomer[i] + " " + yCoordOfCustomer[i]);
     }
 
     distances = precalculateDistances();
@@ -81,7 +85,7 @@ public class VRPInstance {
   }
 
   private static void getSubsetsHelper(List<Integer> customers, List<List<Integer>> subsets,
-                                       int[] subset, int start, int end, int index, int k) {
+      int[] subset, int start, int end, int index, int k) {
     if (index == k) {
       List<Integer> subsetList = new ArrayList<>();
       for (int i = 0; i < k; i++) {
@@ -102,9 +106,10 @@ public class VRPInstance {
   }
 
   public double solve(
-          boolean useBppApproximation,
-          boolean relaxCapacityConstraints,
-          boolean relaxToContinuous) {
+      boolean useBppApproximation,
+      boolean relaxCapacityConstraints,
+      boolean relaxToContinuous,
+      int maxK) {
     try {
       cplex = new IloCplex();
 
@@ -118,11 +123,11 @@ public class VRPInstance {
           if (i == 0) {
             // Edges adjacent to the depot could be traversed no more than twice.
             nTraversals[i][j] = cplex.numVar(0, 2,
-                    relaxToContinuous ? IloNumVarType.Float : IloNumVarType.Int);
+                relaxToContinuous ? IloNumVarType.Float : IloNumVarType.Int);
           } else {
             // Edges not adjacent to the depot could be traversed no more than once.
             nTraversals[i][j] = cplex.numVar(0, 1,
-                    relaxToContinuous ? IloNumVarType.Float : IloNumVarType.Int);
+                relaxToContinuous ? IloNumVarType.Float : IloNumVarType.Int);
           }
         }
       }
@@ -169,7 +174,7 @@ public class VRPInstance {
         }
 
         // Check all subsets of size 1 to numCustomers + 1.
-        for (int k = 1; k < numCustomers + 1; k++) {
+        for (int k = 1; k < maxK + 1; k++) {
           // Get all subsets of customers of size k.
           List<List<Integer>> subsets = getSubsets(customers, k);
 
@@ -247,7 +252,7 @@ public class VRPInstance {
         List<List<Integer>> walks = getWalks(solvedAdjMat);
         // Add the vehicles that didn't go
         int excessVehicles = numVehicles - walks.size();
-        for (int i = 0; i < excessVehicles; i++){
+        for (int i = 0; i < excessVehicles; i++) {
           ArrayList<Integer> excess = new ArrayList<>();
           excess.add(0);
           excess.add(0);
@@ -287,7 +292,8 @@ public class VRPInstance {
 
     // Calculate distances for depot.
     for (int j = 1; j < numCustomers + 1; j++) {
-      double d = distance(xCoordOfCustomer[j - 1], xCoordOfDepot, yCoordOfCustomer[j - 1], yCoordOfDepot);
+      double d = distance(xCoordOfCustomer[j - 1], xCoordOfDepot, yCoordOfCustomer[j - 1],
+          yCoordOfDepot);
       distances[0][j] = d;
       distances[j][0] = d;
     }
@@ -296,7 +302,7 @@ public class VRPInstance {
     for (int i = 1; i < numCustomers + 1; i++) {
       for (int j = 1; j < numCustomers + 1; j++) {
         distances[i][j] = distance(xCoordOfCustomer[i - 1], xCoordOfCustomer[j - 1],
-                yCoordOfCustomer[i - 1], yCoordOfCustomer[j - 1]);
+            yCoordOfCustomer[i - 1], yCoordOfCustomer[j - 1]);
       }
     }
 
@@ -349,7 +355,8 @@ public class VRPInstance {
       for (int i = 0; i < numVehicles; i++) {
         IloLinearNumExpr totalLoad = bppModel.linearNumExpr();
         for (int j = 0; j < customers.size(); j++) {
-          totalLoad.addTerm(customerVehicleAssignment[j][i], demandOfCustomer[customers.get(j) - 1]);
+          totalLoad.addTerm(customerVehicleAssignment[j][i],
+              demandOfCustomer[customers.get(j) - 1]);
         }
         IloLinearNumExpr maxLoad = bppModel.linearNumExpr();
         maxLoad.addTerm(vehicleCapacity, useVehicles[i]);
@@ -382,8 +389,8 @@ public class VRPInstance {
 
   // helper to calculate list of paths for adjacency matrix
   private void dfs(int[][] adjacencyMatrix, int startNode, int currentNode,
-                    boolean[] visited, List<Integer> currentCircuit,
-                    List<List<Integer>> allCircuits, Set<Integer> seen) {
+      boolean[] visited, List<Integer> currentCircuit,
+      List<List<Integer>> allCircuits, Set<Integer> seen) {
     visited[currentNode] = true;
     currentCircuit.add(currentNode);
 
