@@ -2,6 +2,7 @@ package solver.ls;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.stream.IntStream;
 
 public class Main {
 
@@ -19,11 +20,19 @@ public class Main {
     Timer watch = new Timer();
     watch.start();
     VRPInstance instance = new VRPInstance(input);
+
+    // average demand maxK attempt
+    int avgDemand = IntStream.of(instance.demandOfCustomer).sum() / instance.demandOfCustomer.length;
+    int avgLoopLen = instance.vehicleCapacity / avgDemand;
+
+    System.out.println("avgDemand: " + avgDemand + " avgLoopLen: " + avgLoopLen);
+
     double objective = instance.solve(
         true,
         false,
         false,
-        10);
+            (int) (avgLoopLen * 1.5),
+        avgLoopLen / 2);
     watch.stop();
 
     System.out.println("{\"Instance\": \"" + filename +

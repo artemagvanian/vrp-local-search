@@ -109,7 +109,8 @@ public class VRPInstance {
       boolean useBppApproximation,
       boolean relaxCapacityConstraints,
       boolean relaxToContinuous,
-      int maxK) {
+      int maxK,
+      int minK) {
     try {
       cplex = new IloCplex();
 
@@ -173,8 +174,8 @@ public class VRPInstance {
           customers.add(i);
         }
 
-        // Check all subsets of size 1 to numCustomers + 1.
-        for (int k = 1; k < maxK + 1; k++) {
+        // Check all subsets of size minK to maxK
+        for (int k = minK; k < maxK + 1; k++) {
           // Get all subsets of customers of size k.
           List<List<Integer>> subsets = getSubsets(customers, k);
 
