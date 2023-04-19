@@ -49,16 +49,19 @@ public class VRPInstance {
     yCoordOfCustomer = new double[numCustomers];
 
     double demandOfDepot = read.nextInt();
-    double xCoordOfDepot = read.nextDouble();
-    double yCoordOfDepot = read.nextDouble();
+    assert demandOfDepot == 0;
 
-    // depot
+    xCoordOfDepot = read.nextDouble();
+    yCoordOfDepot = read.nextDouble();
+
+    // all customers but the depot
     for (int i = 0; i < numCustomers; i++) {
       demandOfCustomer[i] = read.nextInt();
       xCoordOfCustomer[i] = read.nextDouble();
       yCoordOfCustomer[i] = read.nextDouble();
     }
 
+    System.out.println("Parsed data (demand, x, y): ");
     for (int i = 0; i < numCustomers; i++) {
       System.out.println(
               demandOfCustomer[i] + " " + xCoordOfCustomer[i] + " " + yCoordOfCustomer[i]);
@@ -136,7 +139,7 @@ public class VRPInstance {
       // 2. Each customer is visited exactly once
       for (int i = 1; i < numCustomers + 1; i++) {
         IloLinearNumExpr visitOnce = cplex.linearNumExpr();
-        // Add all non-self edges to the calculation
+        // Add all non-self edges to the calculation (including depot)
         for (int j = 0; j < numCustomers + 1; j++) {
           if (i < j) {
             // travelling = a vehicle goes on that path
@@ -148,16 +151,16 @@ public class VRPInstance {
         cplex.addEq(visitOnce, 2);
       }
 
-      // 3. There are no more than `numVehicles` outgoing edges from the depot
+      // 3. There are no more than 2 * `numVehicles` edges adjacent to the depot
       IloLinearNumExpr returnToDepot = cplex.linearNumExpr();
-      // sum of all outgoing edges from the depot
+      // Sum of all edges adjacent to the depot
       for (int j = 1; j < numCustomers + 1; j++) {
         returnToDepot.addTerm(1, nTraversals[0][j]);
       }
       // adding the constraint
       cplex.addLe(returnToDepot, 2 * numVehicles);
 
-      // 4. Rounded Capacity (RC) constraints (could be strengthened via solving the associated BPP).
+      // 4. Capacity constraints (could be strengthened via solving the associated BPP).
       if (!relaxCapacityConstraints) {
         // Create an array of all customers.
         List<Integer> customers = new ArrayList<>();
@@ -185,31 +188,32 @@ public class VRPInstance {
               minVehiclesNeeded = minVehicles(subset);
             }
             // Add the RC constraint.
-            IloLinearNumExpr rcExpr = cplex.linearNumExpr();
+            IloLinearNumExpr capacityExpr = cplex.linearNumExpr();
             for (int i : subset) { // For each customer selected in the subset.
               for (int j : customers) { // For each customer *not* in the subset.
                 if (!subset.contains(j)) {
                   if (i < j) {
-                    rcExpr.addTerm(1, nTraversals[i][j]); // Add this edge to the edge sum.
+                    capacityExpr.addTerm(1, nTraversals[i][j]); // Add this edge to the edge sum.
                   } else if (i > j) {
-                    rcExpr.addTerm(1, nTraversals[j][i]); // Add this edge to the edge sum.
+                    capacityExpr.addTerm(1, nTraversals[j][i]); // Add this edge to the edge sum.
                   }
                 }
               }
-              rcExpr.addTerm(1, nTraversals[0][i]); // Add the depot edge to the edge sum.
+              capacityExpr.addTerm(1, nTraversals[0][i]); // Add the depot edge to the edge sum.
             }
-            cplex.addGe(rcExpr, 2 * minVehiclesNeeded);
+            cplex.addGe(capacityExpr, 2 * minVehiclesNeeded);
           }
         }
       }
 
       // Solution.
       if (cplex.solve()) {
-        System.out.println("Num Vehicles: " + numVehicles);
-        System.out.println("Num Customers: " + numCustomers);
-        System.out.println("Objective Value: " + cplex.getObjValue());
+        System.out.println("Number of vehicles: " + numVehicles);
+        System.out.println("Number of customers: " + numCustomers);
+        System.out.println("Objective value: " + cplex.getObjValue());
         int[][] solvedAdjMat = new int[numCustomers + 1][numCustomers + 1];
 
+        System.out.println("Solution adjacency matrix: ");
         double totalSum = 0;
         for (int i = 0; i < numCustomers + 1; i++) {
           for (int j = 0; j < numCustomers + 1; j++) {
@@ -229,7 +233,8 @@ public class VRPInstance {
           }
           System.out.println();
         }
-        System.out.println("Objective Check: " + totalSum / 2);
+
+        System.out.println("Objective check: " + totalSum / 2);
 
         //  for (int i = 0; i < numCustomers + 1; i++) {
         //    for (int j = 0; j < numCustomers + 1; j++) {
@@ -240,7 +245,7 @@ public class VRPInstance {
 
         // Turn the adjacency matrix into a CS2951O solution
         List<List<Integer>> walks = getWalks(solvedAdjMat);
-        // add the vehicles that didn't go
+        // Add the vehicles that didn't go
         int excessVehicles = numVehicles - walks.size();
         for (int i = 0; i < excessVehicles; i++){
           ArrayList<Integer> excess = new ArrayList<>();
@@ -249,13 +254,13 @@ public class VRPInstance {
           walks.add(excess);
         }
 
-//        System.out.println("Paths: " + walks.size());
-//        for (List<Integer> walk : walks) {
-//          for (int j : walk) {
-//            System.out.print(j + " ");
-//          }
-//          System.out.println();
-//        }
+        System.out.println("Paths: " + walks.size());
+        for (List<Integer> walk : walks) {
+          for (int j : walk) {
+            System.out.print(j + " ");
+          }
+          System.out.println();
+        }
 
         // convert to a string
         List<Integer> flattenedList = new ArrayList<>();
@@ -296,16 +301,16 @@ public class VRPInstance {
     }
 
     // Sanity check
-//      System.out.println("****");
-//      System.out.println(xCoordOfDepot);
-//      System.out.println(yCoordOfDepot);
-//      for (int i = 0; i < numCustomers + 1; i++) {
-//        for (int j = 0; j < numCustomers + 1; j++) {
-//          System.out.print((int)distances[i][j] + " ");
-//        }
-//        System.out.println();
-//      }
-//      System.out.println("****");
+    //  System.out.println("****");
+    //  System.out.println(xCoordOfDepot);
+    //  System.out.println(yCoordOfDepot);
+    //  for (int i = 0; i < numCustomers + 1; i++) {
+    //    for (int j = 0; j < numCustomers + 1; j++) {
+    //      System.out.print((int)distances[i][j] + " ");
+    //    }
+    //    System.out.println();
+    //  }
+    //  System.out.println("****");
 
     return distances;
   }
@@ -344,10 +349,7 @@ public class VRPInstance {
       for (int i = 0; i < numVehicles; i++) {
         IloLinearNumExpr totalLoad = bppModel.linearNumExpr();
         for (int j = 0; j < customers.size(); j++) {
-          // Note: This doesn't enforce customer capacity:
-          // totalLoad.addTerm(customerVehicleAssignment[j][i], customers.get(j));
-          totalLoad.addTerm(customerVehicleAssignment[j][i], demandOfCustomer[j]);
-
+          totalLoad.addTerm(customerVehicleAssignment[j][i], demandOfCustomer[customers.get(j) - 1]);
         }
         IloLinearNumExpr maxLoad = bppModel.linearNumExpr();
         maxLoad.addTerm(vehicleCapacity, useVehicles[i]);
