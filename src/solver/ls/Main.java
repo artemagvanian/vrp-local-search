@@ -27,7 +27,7 @@ public class Main {
 
     System.out.println("{\"Instance\": \"" + filename +
         "\", \"Time\": " + String.format("%.2f", watch.getTime()) +
-        ", \"Result\": \"" + String.format("%.2f", objective) + "\"" +
-        ", \"Solution\": \"REL\"}");
+        ", \"Result\": " + String.format("%.2f", objective) + "" +
+        ", \"Solution\": \"" + instance.solutionString + "\"}");
   }
 }

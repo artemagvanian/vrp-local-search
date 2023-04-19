@@ -7,9 +7,7 @@ import ilog.concert.IloNumVarType;
 import ilog.cplex.IloCplex;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 public class VRPInstance {
 
@@ -22,6 +20,8 @@ public class VRPInstance {
   double[] xCoordOfCustomer;        // the x coordinate of each customer
   double[] yCoordOfCustomer;        // the y coordinate of each customer
   double[][] distances;             // distances between all customers
+
+  String solutionString;
 
   double xCoordOfDepot;
   double yCoordOfDepot;
@@ -61,7 +61,7 @@ public class VRPInstance {
 
     for (int i = 0; i < numCustomers; i++) {
       System.out.println(
-          demandOfCustomer[i] + " " + xCoordOfCustomer[i] + " " + yCoordOfCustomer[i]);
+              demandOfCustomer[i] + " " + xCoordOfCustomer[i] + " " + yCoordOfCustomer[i]);
     }
 
     distances = precalculateDistances();
@@ -78,7 +78,7 @@ public class VRPInstance {
   }
 
   private static void getSubsetsHelper(List<Integer> customers, List<List<Integer>> subsets,
-      int[] subset, int start, int end, int index, int k) {
+                                       int[] subset, int start, int end, int index, int k) {
     if (index == k) {
       List<Integer> subsetList = new ArrayList<>();
       for (int i = 0; i < k; i++) {
@@ -99,9 +99,9 @@ public class VRPInstance {
   }
 
   public double solve(
-      boolean useBppApproximation,
-      boolean relaxCapacityConstraints,
-      boolean relaxToContinuous) {
+          boolean useBppApproximation,
+          boolean relaxCapacityConstraints,
+          boolean relaxToContinuous) {
     try {
       cplex = new IloCplex();
 
@@ -115,11 +115,11 @@ public class VRPInstance {
           if (i == 0) {
             // Edges adjacent to the depot could be traversed no more than twice.
             nTraversals[i][j] = cplex.numVar(0, 2,
-                relaxToContinuous ? IloNumVarType.Float : IloNumVarType.Int);
+                    relaxToContinuous ? IloNumVarType.Float : IloNumVarType.Int);
           } else {
             // Edges not adjacent to the depot could be traversed no more than once.
             nTraversals[i][j] = cplex.numVar(0, 1,
-                relaxToContinuous ? IloNumVarType.Float : IloNumVarType.Int);
+                    relaxToContinuous ? IloNumVarType.Float : IloNumVarType.Int);
           }
         }
       }
@@ -208,15 +208,19 @@ public class VRPInstance {
         System.out.println("Num Vehicles: " + numVehicles);
         System.out.println("Num Customers: " + numCustomers);
         System.out.println("Objective Value: " + cplex.getObjValue());
+        int[][] solvedAdjMat = new int[numCustomers + 1][numCustomers + 1];
+
         double totalSum = 0;
         for (int i = 0; i < numCustomers + 1; i++) {
           for (int j = 0; j < numCustomers + 1; j++) {
             if (i < j) {
               int indicator = (int) Math.round(cplex.getValue(nTraversals[i][j]));
+              solvedAdjMat[i][j] = indicator;
               System.out.print(indicator + ", ");
               totalSum += indicator * distances[i][j];
             } else if (i > j) {
               int indicator = (int) Math.round(cplex.getValue(nTraversals[j][i]));
+              solvedAdjMat[i][j] = indicator;
               System.out.print(indicator + ", ");
               totalSum += indicator * distances[j][i];
             } else {
@@ -234,6 +238,36 @@ public class VRPInstance {
         //    System.out.println();
         //  }
 
+        // Turn the adjacency matrix into a CS2951O solution
+        List<List<Integer>> walks = getWalks(solvedAdjMat);
+        // add the vehicles that didn't go
+        int excessVehicles = numVehicles - walks.size();
+        for (int i = 0; i < excessVehicles; i++){
+          ArrayList<Integer> excess = new ArrayList<>();
+          excess.add(0);
+          excess.add(0);
+          walks.add(excess);
+        }
+
+//        System.out.println("Paths: " + walks.size());
+//        for (List<Integer> walk : walks) {
+//          for (int j : walk) {
+//            System.out.print(j + " ");
+//          }
+//          System.out.println();
+//        }
+
+        // convert to a string
+        List<Integer> flattenedList = new ArrayList<>();
+        flattenedList.add(1); // NOTE: 1 HERE IF PROVED OPTIMAL, ELSE 0
+        for (List<Integer> innerList : walks) {
+          flattenedList.addAll(innerList);
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Integer number : flattenedList) {
+          sb.append(number).append(" ");
+        }
+        solutionString = sb.toString().trim();
         return cplex.getObjValue();
       } else {
         throw new IllegalArgumentException("Infeasible VRP model.");
@@ -257,7 +291,7 @@ public class VRPInstance {
     for (int i = 1; i < numCustomers + 1; i++) {
       for (int j = 1; j < numCustomers + 1; j++) {
         distances[i][j] = distance(xCoordOfCustomer[i - 1], xCoordOfCustomer[j - 1],
-            yCoordOfCustomer[i - 1], yCoordOfCustomer[j - 1]);
+                yCoordOfCustomer[i - 1], yCoordOfCustomer[j - 1]);
       }
     }
 
@@ -310,8 +344,8 @@ public class VRPInstance {
       for (int i = 0; i < numVehicles; i++) {
         IloLinearNumExpr totalLoad = bppModel.linearNumExpr();
         for (int j = 0; j < customers.size(); j++) {
-            // Note: This doesn't enforce customer capacity:
-            // totalLoad.addTerm(customerVehicleAssignment[j][i], customers.get(j));
+          // Note: This doesn't enforce customer capacity:
+          // totalLoad.addTerm(customerVehicleAssignment[j][i], customers.get(j));
           totalLoad.addTerm(customerVehicleAssignment[j][i], demandOfCustomer[j]);
 
         }
@@ -330,4 +364,39 @@ public class VRPInstance {
     }
   }
 
+  // helper to turn the adjacency matrix into a list of paths
+  public List<List<Integer>> getWalks(int[][] adjMat) {
+    List<List<Integer>> allCircuits = new ArrayList<>();
+    boolean[] visited = new boolean[adjMat.length];
+    List<Integer> currentCircuit = new ArrayList<>();
+
+    // recursively find all paths connected to the start node
+    dfs(adjMat, 0, 0, visited, currentCircuit, allCircuits, new HashSet<>());
+    for (List<Integer> l : allCircuits) {
+      l.add(0);
+    }
+    return allCircuits;
+  }
+
+  // helper to calculate list of paths for adjacency matrix
+  private void dfs(int[][] adjacencyMatrix, int startNode, int currentNode,
+                    boolean[] visited, List<Integer> currentCircuit,
+                    List<List<Integer>> allCircuits, Set<Integer> seen) {
+    visited[currentNode] = true;
+    currentCircuit.add(currentNode);
+
+    for (int neighbor = 0; neighbor < adjacencyMatrix[currentNode].length; neighbor++) {
+      if (adjacencyMatrix[currentNode][neighbor] == 1 && !seen.contains(neighbor)) {
+        if (neighbor == startNode && currentCircuit.size() > 2) {
+          allCircuits.add(new ArrayList<>(currentCircuit));
+        } else if (!visited[neighbor]) {
+          seen.add(neighbor);
+          dfs(adjacencyMatrix, startNode, neighbor, visited, currentCircuit, allCircuits, seen);
+        }
+      }
+    }
+
+    visited[currentNode] = false;
+    currentCircuit.remove(currentCircuit.size() - 1);
+  }
 }
