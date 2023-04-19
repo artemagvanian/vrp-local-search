@@ -21,7 +21,7 @@ public class Main {
     VRPInstance instance = new VRPInstance(input);
     double objective = instance.solve(
         true,
-        true,
+        false,
         false);
     watch.stop();
 

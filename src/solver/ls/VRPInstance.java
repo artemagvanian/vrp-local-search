@@ -23,6 +23,9 @@ public class VRPInstance {
   double[] yCoordOfCustomer;        // the y coordinate of each customer
   double[][] distances;             // distances between all customers
 
+  double xCoordOfDepot;
+  double yCoordOfDepot;
+
 
   public VRPInstance(String fileName) {
     Scanner read = null;
@@ -33,7 +36,7 @@ public class VRPInstance {
       System.exit(-1);
     }
 
-    numCustomers = read.nextInt();
+    numCustomers = read.nextInt() - 1; // normalizing for our dumb model
     numVehicles = read.nextInt();
     vehicleCapacity = read.nextInt();
 
@@ -44,6 +47,10 @@ public class VRPInstance {
     demandOfCustomer = new int[numCustomers];
     xCoordOfCustomer = new double[numCustomers];
     yCoordOfCustomer = new double[numCustomers];
+
+    double demandOfDepot = read.nextInt();
+    double xCoordOfDepot = read.nextDouble();
+    double yCoordOfDepot = read.nextDouble();
 
     // depot
     for (int i = 0; i < numCustomers; i++) {
@@ -151,7 +158,6 @@ public class VRPInstance {
       cplex.addLe(returnToDepot, 2 * numVehicles);
 
       // 4. Rounded Capacity (RC) constraints (could be strengthened via solving the associated BPP).
-
       if (!relaxCapacityConstraints) {
         // Create an array of all customers.
         List<Integer> customers = new ArrayList<>();
@@ -242,7 +248,7 @@ public class VRPInstance {
 
     // Calculate distances for depot.
     for (int j = 1; j < numCustomers + 1; j++) {
-      double d = distance(xCoordOfCustomer[j - 1], 0, yCoordOfCustomer[j - 1], 0);
+      double d = distance(xCoordOfCustomer[j - 1], xCoordOfDepot, yCoordOfCustomer[j - 1], yCoordOfDepot);
       distances[0][j] = d;
       distances[j][0] = d;
     }
@@ -256,14 +262,16 @@ public class VRPInstance {
     }
 
     // Sanity check
-    //  System.out.println("****");
-    //  for (int i = 0; i < numCustomers + 1; i++) {
-    //    for (int j = 0; j < numCustomers + 1; j++) {
-    //      System.out.print((int)distances[i][j] + " ");
-    //    }
-    //    System.out.println();
-    //  }
-    //  System.out.println("****");
+//      System.out.println("****");
+//      System.out.println(xCoordOfDepot);
+//      System.out.println(yCoordOfDepot);
+//      for (int i = 0; i < numCustomers + 1; i++) {
+//        for (int j = 0; j < numCustomers + 1; j++) {
+//          System.out.print((int)distances[i][j] + " ");
+//        }
+//        System.out.println();
+//      }
+//      System.out.println("****");
 
     return distances;
   }
@@ -302,7 +310,10 @@ public class VRPInstance {
       for (int i = 0; i < numVehicles; i++) {
         IloLinearNumExpr totalLoad = bppModel.linearNumExpr();
         for (int j = 0; j < customers.size(); j++) {
-          totalLoad.addTerm(customerVehicleAssignment[j][i], customers.get(j));
+            // Note: This doesn't enforce customer capacity:
+            // totalLoad.addTerm(customerVehicleAssignment[j][i], customers.get(j));
+          totalLoad.addTerm(customerVehicleAssignment[j][i], demandOfCustomer[j]);
+
         }
         IloLinearNumExpr maxLoad = bppModel.linearNumExpr();
         maxLoad.addTerm(vehicleCapacity, useVehicles[i]);
