@@ -1,16 +1,17 @@
-{"Instance": "101_11_2.vrp", "Time": 2.77, "Result": "866.08", "Solution": "REL"}
-{"Instance": "101_8_1.vrp", "Time": 0.34, "Result": "631.79", "Solution": "REL"}
-{"Instance": "121_7_1.vrp", "Time": 0.34, "Result": "410.74", "Solution": "REL"}
-{"Instance": "135_7_1.vrp", "Time": 0.93, "Result": "667.36", "Solution": "REL"}
-{"Instance": "151_15_1.vrp", "Time": 0.58, "Result": "777.04", "Solution": "REL"}
-{"Instance": "16_5_1.vrp", "Time": 0.10, "Result": "218.46", "Solution": "REL"}
-{"Instance": "200_16_2.vrp", "Time": 0.57, "Result": "755.62", "Solution": "REL"}
-{"Instance": "21_4_1.vrp", "Time": 0.11, "Result": "255.72", "Solution": "REL"}
-{"Instance": "241_22_1.vrp", "Time": 0.44, "Result": "352.74", "Solution": "REL"}
-{"Instance": "262_25_1.vrp", "Time": 3.26, "Result": "2259.81", "Solution": "REL"}
-{"Instance": "30_4_1.vrp", "Time": 0.17, "Result": "316.36", "Solution": "REL"}
-{"Instance": "386_47_1.vrp", "Time": 5.59, "Result": "7877.72", "Solution": "REL"}
-{"Instance": "41_14_1.vrp", "Time": 0.18, "Result": "362.71", "Solution": "REL"}
-{"Instance": "45_4_1.vrp", "Time": 0.17, "Result": "503.68", "Solution": "REL"}
-{"Instance": "51_5_1.vrp", "Time": 0.18, "Result": "418.89", "Solution": "REL"}
-{"Instance": "76_8_2.vrp", "Time": 0.24, "Result": "541.42", "Solution": "REL"}
+{"Instance": "101_11_2.vrp", "Time": 3.03, "Result": 866.08, "Solution": "1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"}
+{"Instance": "101_8_1.vrp", "Time": 0.39, "Result": 630.15, "Solution": "1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"}
+{"Instance": "121_7_1.vrp", "Time": 0.38, "Result": 408.64, "Solution": "1 0 0 0 0 0 0 0 0 0 0 0 0 0 0"}
+{"Instance": "135_7_1.vrp", "Time": 0.97, "Result": 661.01, "Solution": "1 0 0 0 0 0 0 0 0 0 0 0 0 0 0"}
+{"Instance": "151_15_1.vrp", "Time": 0.84, "Result": 777.04, "Solution": "1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"}
+{"Instance": "16_5_1.vrp", "Time": 0.11, "Result": 208.01, "Solution": "1 0 0 0 0 0 0 0 0 0 0"}
+{"Instance": "200_16_2.vrp", "Time": 0.74, "Result": 755.26, "Solution": "1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"}
+{"Instance": "21_4_1.vrp", "Time": 0.13, "Result": 255.69, "Solution": "1 0 0 0 0 0 0 0 0"}
+{"Instance": "241_22_1.vrp", "Time": 0.48, "Result": 352.74, "Solution": "1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"}
+{"Instance": "262_25_1.vrp", "Time": 2.77, "Result": 2248.94, "Solution": "1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"}
+{"Instance": "30_4_1.vrp", "Time": 0.21, "Result": 304.56, "Solution": "1 0 0 0 0 0 0 0 0"}
+{"Instance": "386_47_1.vrp", "Time": 4.61, "Result": 7874.32, "Solution": "1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"}
+{"Instance": "41_14_1.vrp", "Time": 0.26, "Result": 360.36, "Solution": "1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"}
+{"Instance": "45_4_1.vrp", "Time": 0.19, "Result": 503.68, "Solution": "1 0 0 0 0 0 0 0 0"}
+{"Instance": "51_5_1.vrp", "Time": 0.21, "Result": 416.05, "Solution": "1 0 0 0 0 0 0 0 0 0 0"}
+{"Instance": "5_4_10.vrp", "Time": 0.11, "Result": 64.72, "Solution": "1 0 0 0 0 0 0 0 0"}
+{"Instance": "76_8_2.vrp", "Time": 0.24, "Result": 537.23, "Solution": "1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"}
