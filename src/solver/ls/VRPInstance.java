@@ -17,7 +17,7 @@ public abstract class VRPInstance {
   public double[] yCoordOfCustomer;        // the y coordinate of each customer
   public double[][] distances;             // distances between all customers
 
-  public List<List<Integer>> routes;
+  public List<List<Integer>> routes;       // routes for each of the trucks
 
 
   protected VRPInstance(String fileName) {
@@ -75,6 +75,7 @@ public abstract class VRPInstance {
     return distances;
   }
 
+  // Serialize all routes into the required format.
   public String serializeRoutes() {
     // Add the vehicles that didn't go
     int excessVehicles = numVehicles - routes.size();
@@ -107,6 +108,7 @@ public abstract class VRPInstance {
     return sb.toString().trim();
   }
 
+  // Get tour length from the routes.
   public double getTourLength() {
     double totalTourLength = 0;
     for (List<Integer> route : routes) {

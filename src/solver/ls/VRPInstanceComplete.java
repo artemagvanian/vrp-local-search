@@ -16,6 +16,7 @@ public class VRPInstanceComplete extends VRPInstance {
     super(fileName);
   }
 
+  // Get subsets of the customers of a given size.
   private static List<List<Integer>> getSubsets(List<Integer> customers, int size) {
     int n = customers.size();
     int[] subset = new int[size];
@@ -26,6 +27,7 @@ public class VRPInstanceComplete extends VRPInstance {
     return subsets;
   }
 
+  // Recursive helper for getting subsets.
   private static void getSubsetsHelper(List<Integer> customers, List<List<Integer>> subsets,
       int[] subset, int start, int end, int index, int k) {
     if (index == k) {
@@ -43,6 +45,7 @@ public class VRPInstanceComplete extends VRPInstance {
     }
   }
 
+  // Solve the model.
   public void solve(
       boolean useBppApproximation,
       boolean relaxCapacityConstraints,
@@ -188,6 +191,7 @@ public class VRPInstanceComplete extends VRPInstance {
     }
   }
 
+  // Determine how many vehicles are strictly needed to serve a given list of customers.
   private int minVehicles(List<Integer> customers) {
     try (IloCplex bppModel = new IloCplex()) {
       bppModel.setOut(null);
@@ -240,7 +244,7 @@ public class VRPInstanceComplete extends VRPInstance {
     }
   }
 
-  // helper to turn the adjacency matrix into a list of paths
+  // Helper to turn the adjacency matrix into a list of paths.
   private List<List<Integer>> getWalks(int[][] adjMat) {
     List<List<Integer>> allCircuits = new ArrayList<>();
     boolean[] visited = new boolean[adjMat.length];
@@ -254,7 +258,7 @@ public class VRPInstanceComplete extends VRPInstance {
     return allCircuits;
   }
 
-  // helper to calculate list of paths for adjacency matrix
+  // Helper to calculate list of paths for adjacency matrix.
   private void dfs(int[][] adjacencyMatrix, int startNode, int currentNode,
       boolean[] visited, List<Integer> currentCircuit,
       List<List<Integer>> allCircuits, Set<Integer> seen) {

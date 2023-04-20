@@ -11,10 +11,21 @@ public class VRPInstanceIncomplete extends VRPInstance {
 
   VRPInstanceIncomplete(String fileName) {
     super(fileName);
-    generateInitialSolution();
+    routes = generateInitialSolution();
   }
 
-  private void generateInitialSolution() {
+  // Interchanges 0 or more customers between routes to improve the current solution.
+  private void optimizeCustomerInterchange() {
+
+  }
+
+  // Optimize structure of each route via switching the edges between customers.
+  private void optimizeRouteStructure() {
+
+  }
+
+  // Generate initial feasible solution via solving a bin packing problem.
+  private List<List<Integer>> generateInitialSolution() {
     try (IloCplex bppModel = new IloCplex()) {
       bppModel.setOut(null);
       bppModel.setWarning(null);
@@ -62,7 +73,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
           currentRoute.add(0);
           initialRoutes.add(currentRoute);
         }
-        routes = initialRoutes;
+        return initialRoutes;
       } else {
         throw new IllegalArgumentException("Infeasible BPP model.");
       }
