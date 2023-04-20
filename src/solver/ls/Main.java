@@ -19,25 +19,27 @@ public class Main {
 
     Timer watch = new Timer();
     watch.start();
-    VRPInstance instance = new VRPInstance(input);
+    VRPInstanceIncomplete instance = new VRPInstanceIncomplete(input);
 
-    // average demand maxK attempt
-    int avgDemand = IntStream.of(instance.demandOfCustomer).sum() / instance.demandOfCustomer.length;
-    int avgLoopLen = instance.vehicleCapacity / avgDemand;
+    // Calculate average demand and average loop length for minK and maxK
+    int avgDemand =
+        IntStream.of(instance.demandOfCustomer).sum() / instance.demandOfCustomer.length;
+    int avgLoopLength = instance.vehicleCapacity / avgDemand;
 
-    System.out.println("avgDemand: " + avgDemand + " avgLoopLen: " + avgLoopLen);
+    System.out.println("Average demand: " + avgDemand + "; Average loop length: " + avgLoopLength);
 
-    double objective = instance.solve(
+    // Calling solve for the complete model.
+    /* instance.solve(
         true,
         false,
         false,
-            (int) (avgLoopLen * 1.5),
-        avgLoopLen / 2);
+        1, instance.numCustomers); */
+
     watch.stop();
 
     System.out.println("{\"Instance\": \"" + filename +
         "\", \"Time\": " + String.format("%.2f", watch.getTime()) +
-        ", \"Result\": " + String.format("%.2f", objective) +
-        ", \"Solution\": \"" + instance.solutionString + "\"}");
+        ", \"Result\": " + String.format("%.2f", instance.getTourLength()) +
+        ", \"Solution\": \"" + instance.serializeRoutes() + "\"}");
   }
 }
