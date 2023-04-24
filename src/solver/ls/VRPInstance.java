@@ -76,7 +76,7 @@ public abstract class VRPInstance {
   }
 
   // Serialize all routes into the required format.
-  public String serializeRoutes() {
+  public String serializeRoutes(List<List<Integer>> routes) {
     // Add the vehicles that didn't go
     int excessVehicles = numVehicles - routes.size();
     for (int i = 0; i < excessVehicles; i++) {
@@ -109,7 +109,7 @@ public abstract class VRPInstance {
   }
 
   // Get tour length from the routes.
-  public double getTourLength() {
+  public double getTourLength(List<List<Integer>> routes) {
     double totalTourLength = 0;
     for (List<Integer> route : routes) {
       for (int j = 0; j < route.size() - 1; j++) {

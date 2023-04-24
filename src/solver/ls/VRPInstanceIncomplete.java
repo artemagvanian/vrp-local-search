@@ -10,12 +10,17 @@ import java.util.List;
 
 public class VRPInstanceIncomplete extends VRPInstance {
 
+  private final int maxIterations;
+  public List<List<Integer>> incumbent;
   private double objective;
+  private double excessCapacityPenaltyCoefficient = 5.0;
 
-  VRPInstanceIncomplete(String fileName) {
+  VRPInstanceIncomplete(String fileName, int maxIterations) {
     super(fileName);
     routes = generateInitialSolution();
+    incumbent = cloneRoutes(routes);
     objective = calculateObjective();
+    this.maxIterations = maxIterations;
     System.out.println("Initial objective: " + objective);
 
     optimizeCustomerInterchange();
@@ -28,8 +33,11 @@ public class VRPInstanceIncomplete extends VRPInstance {
     OneInterchange bestInsertion;
     OneInterchange bestSwap;
 
+    int numIterations = 0;
+
     // keep going while we are looking for a solution
     do {
+      numIterations++;
       // 2. see if insertions do anything
       bestInsertion = findBestInsertion();
       if (bestInsertion != null) {
@@ -54,14 +62,27 @@ public class VRPInstanceIncomplete extends VRPInstance {
         performSwap(bestSwap.fromRouteIdx(), bestSwap.fromCustomerIdx(),
             bestSwap.toRouteIdx(), bestSwap.toCustomerIdx());
       }
-      System.out.println(objective);
 
-    } while (bestInsertion != null || bestSwap != null);
+      if (getTourLength(routes) < getTourLength(incumbent)
+          && calculateExcessCapacity(routes) == 0) {
+        incumbent = cloneRoutes(routes);
+      }
+
+      if (calculateExcessCapacity(routes) == 0) {
+        excessCapacityPenaltyCoefficient /= 2;
+      } else {
+        excessCapacityPenaltyCoefficient *= 2;
+      }
+
+      System.out.println("Current objective: " + objective);
+      System.out.println("Penalty Coefficient: " + excessCapacityPenaltyCoefficient);
+
+    } while ((bestInsertion != null || bestSwap != null) && numIterations < maxIterations);
   }
 
   // calculate insertions
   private OneInterchange findBestInsertion() {
-    double newObjective = objective;
+    double newObjective = Double.POSITIVE_INFINITY;
     OneInterchange bestInsertion = null;
 
     // checks every customer index
@@ -83,7 +104,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
 
   // find all places where the given customer at route index can be
   private OneInterchange findBestInsertionForCustomer(int currentRouteIdx, int currentCustomerIdx) {
-    double bestObjective = objective;
+    double bestObjective = Double.POSITIVE_INFINITY;
     int bestRouteIdx = currentRouteIdx;
     int bestCustomerIdx = currentCustomerIdx;
     int customer = routes.get(currentRouteIdx).get(currentCustomerIdx);
@@ -103,8 +124,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
 
         // calculate objective function and check it, accounting for infeasibility
         double newObjective = calculateObjective();
-        double amountOverCapacity = calculateAmountOverCapacity();
-        if (newObjective < bestObjective && amountOverCapacity == 0) {
+        if (newObjective < bestObjective) {
           // save the best places to insert this customer
           bestRouteIdx = routeIdx;
           bestCustomerIdx = insertAtIdx;
@@ -131,7 +151,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
     List<OneInterchange> customerPairs = getAllSwaps();
 
     OneInterchange bestSwap = null;
-    double bestObjective = objective;
+    double bestObjective = Double.POSITIVE_INFINITY;
 
     // for each pair
     for (OneInterchange swap : customerPairs) {
@@ -140,13 +160,12 @@ public class VRPInstanceIncomplete extends VRPInstance {
           swap.toCustomerIdx());
       // calculate new objective function
       double newObjective = calculateObjective();
-      double amountOverCapacity = calculateAmountOverCapacity();
       // swap back
       performSwap(swap.fromRouteIdx(), swap.fromCustomerIdx(), swap.toRouteIdx(),
           swap.toCustomerIdx());
 
       // if it was better than the current strategy
-      if (newObjective < bestObjective && amountOverCapacity == 0) {
+      if (newObjective < bestObjective) {
         // save these values
         bestObjective = newObjective;
         bestSwap = new OneInterchange(InterchangeType.Swap, newObjective,
@@ -190,29 +209,36 @@ public class VRPInstanceIncomplete extends VRPInstance {
   }
 
   private double calculateObjective() {
-    // objective function: c'(x) = c(x) + Q(x) + D(x)
-    //                    route cost + tot excess capacity   tot excess distance
-    return getTourLength();
+    return getTourLength(routes)
+        + calculateExcessCapacity(routes) * excessCapacityPenaltyCoefficient;
   }
 
-
   // for each vehicle's route, check how much over capacity it is
-  public double calculateAmountOverCapacity() {
-    double overCapacity = 0;
-    double capacity = 0;
+  public double calculateExcessCapacity(List<List<Integer>> routes) {
+    double excessCapacity = 0;
     // for each vehicle
     for (List<Integer> route : routes) {
-      capacity = 0;
+      double demand = 0;
       // calculate capacity
-      for (int i : route) {
-        capacity += demandOfCustomer[i];
+      for (int customer : route) {
+        demand += demandOfCustomer[customer];
       }
       // only if its over what it should be, add amount over
-      if (vehicleCapacity < capacity) {
-        overCapacity += capacity - vehicleCapacity;
+      if (vehicleCapacity < demand) {
+        excessCapacity += demand - vehicleCapacity;
       }
     }
-    return overCapacity;
+    return excessCapacity;
+  }
+
+  public List<List<Integer>> cloneRoutes(List<List<Integer>> routes) {
+    List<List<Integer>> routesCopy = new ArrayList<>();
+
+    for (List<Integer> route : routes) {
+      routesCopy.add(new ArrayList<>(route));
+    }
+
+    return routesCopy;
   }
 
   // Generate initial feasible solution via solving a bin packing problem.

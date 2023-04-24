@@ -2,6 +2,7 @@ package solver.ls;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+// import java.util.stream.IntStream;
 
 public class Main {
 
@@ -18,7 +19,7 @@ public class Main {
 
     Timer watch = new Timer();
     watch.start();
-    VRPInstanceIncomplete incompleteInstance = new VRPInstanceIncomplete(input);
+    VRPInstanceIncomplete incompleteInstance = new VRPInstanceIncomplete(input, 1000);
     watch.stop();
 
     /*
@@ -47,16 +48,19 @@ public class Main {
     System.out.println("{\"Instance (COMPLETE) \": \"" + filename +
         "\", \"Time\": " + String.format("%.2f", watch2.getTime()) +
         ", \"Result\": " + String.format("%.2f",
-        completeInstance.getTourLength()) +
-        ", \"Solution\": \"" + completeInstance.serializeRoutes() + "\"}");
+        completeInstance.getTourLength(completeInstance.routes)) +
+        ", \"Solution\": \"" + completeInstance.serializeRoutes(completeInstance.routes) + "\"}");
     System.out.println("*************");
      */
 
-    System.out.println("Amount over capacity: " + incompleteInstance.calculateAmountOverCapacity());
+    System.out.println("Amount over capacity: " + incompleteInstance.calculateExcessCapacity(
+        incompleteInstance.incumbent));
+
     System.out.println("{\"Instance\": \"" + filename +
         "\", \"Time\": " + String.format("%.2f", watch.getTime()) +
         ", \"Result\": " + String.format("%.2f",
-        incompleteInstance.getTourLength()) +
-        ", \"Solution\": \"" + incompleteInstance.serializeRoutes() + "\"}");
+        incompleteInstance.getTourLength(incompleteInstance.incumbent)) +
+        ", \"Solution\": \"" + incompleteInstance.serializeRoutes(incompleteInstance.incumbent)
+        + "\"}");
   }
 }
