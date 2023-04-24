@@ -5,90 +5,66 @@ import ilog.concert.IloLinearNumExpr;
 import ilog.concert.IloNumVar;
 import ilog.cplex.IloCplex;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import java.util.Random;
+
 
 public class VRPInstanceIncomplete extends VRPInstance {
 
   VRPInstanceIncomplete(String fileName) {
     super(fileName);
     routes = generateInitialSolution();
+    optimizeCustomerInterchange(routes);
   }
 
   // Interchanges 0 or more customers between routes to improve the current solution.
   // \lambda = 2:
   // Swaps and shifts: (2, 2), (2, 1), (2, 0), (1, 1), (1, 0)
   private void optimizeCustomerInterchange(List<List<Integer>> routes) {
-    // 1. randomly pick two routes (i.e. pick two indices into routes)
-//    Random rand = new Random();
-//
-//    int i1 = rand.nextInt(routes.size()); //
-//    int i2 = rand.nextInt(routes.size()); // this is different from first bc of nextInt()
-//    List<Integer> route1 = routes.get(i1);
-//    List<Integer> route2 = routes.get(i2);
+    // 1. calculate current best objective
+    double initialObjective = calculateObjFunction(routes);
+    double currentObjective = initialObjective;
 
-    // 1. Generate all pairs of
-    List<List<Integer>> customerPairs = new ArrayList<>();
-//
-//    for (int i = 0; i < routes.size(); i++) {
-//      for (int j = 0; j < routes.size(); j++) {
-//        List<Integer> pair = new ArrayList<>();
-//        pair.add(i);
-//        pair.add(j);
-//        indexPairs.add(pair);
-//      }
-//    }
+    System.out.println("initial: " + initialObjective);
 
-    // 1. for each customer check all place of insertion into other routes
-    // as we are doing this, generate a list of pairs
+    List<Double> insertions = new ArrayList<>();
+    Tuple<Double, Tuple<Tuple<Integer, Integer>, Tuple<Integer, Integer>>> swap = null;
 
-//    for (int i = 0; i <= list1.size(); i++){
-//      list1.add(i, customer);
-//      list1.remove(i);
-//    }
+    // keep going while we are looking for a solution
+    while (!(insertions == null && swap == null )) {//&& getAmtOverCapacity(routes) == 0)) {
+      // 2. see if insertions do anything
+      insertions = calculateInsertions(routes, currentObjective);
+      if (insertions != null) {
+        // returns output (obs1, obs2, coord1, coord2, bestObj)
+        currentObjective = insertions.get(4);
+        // perform the insertion of the original coordinate into the new spot
+        routes.get(insertions.get(2).intValue()).add(insertions.get(3).intValue(),
+                routes.get(insertions.get(0).intValue()).get(insertions.get(1).intValue()));
+        // remove the original value
+        routes.get(insertions.get(0).intValue()).remove(insertions.get(1).intValue());
+      }
 
+//      System.out.println("*****");
+//      System.out.println("ATTEMPT Insertion: ");
+//      System.out.println(serializeRoutes());
+//      System.out.println("*****");
 
-    // 2. Calculate the capacity of the routes we have in a list of size lambda (2)
-//    List<Double> curCapacities = new ArrayList<>();
-//    curCapacities.add(getCapacity(route1));
-//    curCapacities.add(getCapacity(route2));
+      // 3. see if swaps do anything
+      // currently lambda = 1
+      swap = calculateSwaps(routes, currentObjective);
+      // there exists some swap that will improve the solution
+      if (swap != null) {
+        currentObjective = swap.first();
+        Tuple<Tuple<Integer, Integer>, Tuple<Integer, Integer>> s = swap.second();
+        // perform the actual swap
+        swap(routes, s.first().first(), s.second().first(), s.first().second(), s.second().second());
+      }
+      System.out.println();
+    }
 
-    // 3. check all combinations of swaps between all the variables in the routes.
-
-    // iterate over all possible combinations of swaps and shifts
-//    for (int i = 0; i < route1.size(); i++) {
-//      for (int j = 0; j < route2.size(); j++) {
-//        // swap two elements in list1
-//        List<Integer> newList1 = new ArrayList<>(route1);
-//        List<Integer> newList2 = new ArrayList<>(route2);
-//        int temp = newList1.get(i);
-//        newList1.set(i, newList2.get(j));
-//        newList2.set(j, temp);
-//      }
-//    }
-
-//        // shift an element from list1 to list2
-//        List<Integer> newList2 = new ArrayList<>(list2);
-//        newList2.add(newList1.get(i));
-//        newList1.remove(i);
-//
-//        // shift an element from list2 to list1
-//        List<Integer> newList3 = new ArrayList<>(list1);
-//        newList3.add(newList2.get(j));
-//        newList2.remove(j);
-
-
-
-        //  3.1. to check a combination, that means check capacity on each of the routes and see how much each thing is over
-    //  3.2  additionally check the total tour length (optimize this!)
-
-    // 4. save the total tour length + excess capacity
-
-    // 5. select the route that has the lowest cost
-
-    // loop
-
+    System.out.println("AMT OVER CAPACITY: " + getAmtOverCapacity(routes));
   }
 
   // Optimize structure of each route via switching the edges between customers.
@@ -96,14 +72,56 @@ public class VRPInstanceIncomplete extends VRPInstance {
 
   }
 
+  // calculate insertions
+  private List<Double> calculateInsertions(List<List<Integer>> routes, double currentBest){
+    double bestObj = currentBest;
+    double insert1 = 0;
+    double insert2 = 0;
+
+    double obs1 = 0;
+    double obs2 = 0;
+
+    // checks every customer index
+    for (int i = 0; i < routes.size() ; i++) {
+      for(int j = 1; j < routes.get(i).size() - 1; j++) {
+        // returns output (coord1, coord2, bestObj)
+        List<Double> output = checkInsertions(routes, currentBest, i, j);
+
+        // if we have a new winner
+        if (output.get(2) < bestObj) {
+          bestObj = output.get(2);
+          insert1 = output.get(0);
+          insert2 = output.get(1);
+          obs1 = i;
+          obs2 = j;
+        }
+      }
+    }
+
+    // NO IMPROVEMENT from any insertions
+    if (bestObj == currentBest) {
+      return null;
+    }
+
+    // generate output list
+    List<Double> toRet = new ArrayList<>();
+    toRet.add(obs1);
+    toRet.add(obs2);
+    toRet.add(insert1);
+    toRet.add(insert2);
+    toRet.add(bestObj);
+    return toRet;
+  }
+
   // find all places where the given customer at route index can be
-  private List<Double> checkInsertions(List<List<Integer>> routes, int customer, int curI, int curJ){
+  private List<Double> checkInsertions(List<List<Integer>> routes, double bestObj, int curI, int curJ){
     // to avoid any issues
     // mutability stuff here is realllly sketch
     int bestI = curI;
     int bestJ = curJ;
-    double bestObj = getTourLength(routes) + getAmtOverCapacity(routes);
-    // remove
+    int customer = routes.get(curI).get(curJ);
+
+    // remove the customer from where it currently is
     routes.get(curI).remove(curJ);
 
     // iterate over every place in the route
@@ -111,7 +129,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
           List<Integer> r = routes.get(i);
           for (int j = 1; j < r.size(); j++){
             // add this current insertion into this route
-            r.add(i, customer);
+            r.add(j, customer);
 
             // calculate objective function and check it, accounting for infeasibility
             double obj = calculateObjFunction(routes);
@@ -122,7 +140,8 @@ public class VRPInstanceIncomplete extends VRPInstance {
               bestObj = obj;
             }
 
-            r.remove(i);
+            // reset back to the original for next iteration
+            r.remove(j);
           }
     }
     // reset back to the original route
@@ -137,15 +156,95 @@ public class VRPInstanceIncomplete extends VRPInstance {
     return toRet;
   }
 
-  private List<Double> checkSwaps(List<List<Integer>> routes, int customer, int curI, int curJ) {
-      // iterate over every pair of customers (save their indices somehow for ease of access?)
-      // swap them
+  // calculate the effect of swapping on every pair of customers
+  private Tuple<Double, Tuple<Tuple<Integer, Integer>, Tuple<Integer, Integer>>> calculateSwaps(
+          List<List<Integer>> routes, double currentBest){
+    // THIS WORK CAN maybe? BE OPTIMIZED TO DONE BEFOREHAND
+    // calculate all pairs of customers that aren't on the same route
+    List<Tuple<Tuple<Integer, Integer>, Tuple<Integer, Integer>>> customerPairs = getAllPairs(routes);
 
-      // find the best swap and return it
+    Tuple<Tuple<Integer, Integer>, Tuple<Integer, Integer>> bestPair = null;
+    double bestObj = currentBest;
+
+    // for each pair
+    for (Tuple<Tuple<Integer, Integer>, Tuple<Integer, Integer>> pair : customerPairs) {
+      // calculate the value gained by swapping
+      double obj = checkSwap(routes, bestObj, pair.first().first(), pair.first().second(),
+              pair.second().first(), pair.second().second());
+
+      // if it was better than the current strategy
+      if (obj > 0) {
+        //save these values
+        bestObj = obj;
+        bestPair = pair;
+      }
+    }
+
+    if (bestObj == currentBest) {
       return null;
+    }
+    return new Tuple<>(bestObj, bestPair);
   }
 
-    private double calculateObjFunction(List<List<Integer>> routes){
+  // calculates all pairs of customer indices, excluding those on the same route
+  // It's essentially a list of tuples of coordinate pairs
+  private List<Tuple<Tuple<Integer, Integer>, Tuple<Integer, Integer>>> getAllPairs(List<List<Integer>> routes) {
+    List<Tuple<Tuple<Integer, Integer>, Tuple<Integer, Integer>>> toRet = new ArrayList<>();
+
+    // iterate through all routes
+    for (int i = 0; i < routes.size(); i++) {
+      for (int j = i + 1; j < routes.size(); j++) {
+        List<Integer> list1 = routes.get(i);
+        List<Integer> list2 = routes.get(j);
+        // account for depots here
+        for (int k = 1; k < list1.size() - 1; k++) {
+          for (int l = 1; l < list2.size() - 1; l++) {
+            toRet.add(new Tuple<>(new Tuple<>(i, k), new Tuple<>(j, l)));
+          }
+        }
+      }
+    }
+
+    return toRet;
+  }
+
+  private Double checkSwap(List<List<Integer>> routes, double bestObj, int c1i, int c1j, int c2i, int c2j) {
+    // in this function, we are calculating the effect of a single swap
+    // swap them
+    List<Integer> r1 = routes.get(c1i);
+    List<Integer> r2 = routes.get(c2i);
+
+    // swap (works cuz mutability)
+    swap(r1, r2, c1j, c2j);
+    // calculate new objective function
+    double obj = calculateObjFunction(routes);
+    // swap back
+    swap(r1, r2, c1j, c2j);
+
+    // return the best objective
+    if (obj < bestObj) {
+      swap(r1, r2, c1j, c2j);
+      return obj;
+    }
+
+    return -1.0;
+  }
+  private void swap(List<Integer> r1, List<Integer> r2, int j1, int j2){
+    int temp = r1.get(j1);
+    r1.set(j1, r2.get(j2));
+    r2.set(j2, temp);
+  }
+
+  private void swap(List<List<Integer>> routes, int i1, int i2, int j1, int j2){
+    List<Integer> r1 = routes.get(i1);
+    List<Integer> r2 = routes.get(i2);
+
+    int temp = r1.get(j1);
+    r1.set(j1, r2.get(j2));
+    r2.set(j2, temp);
+  }
+
+  private double calculateObjFunction(List<List<Integer>> routes){
     // objecting function: c'(x) = c(x) + Q(x) + D(x)
     //                    route cost + tot excess capacity   tot excess distance
     return getTourLength(routes) + getAmtOverCapacity(routes);

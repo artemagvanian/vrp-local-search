@@ -131,7 +131,7 @@ public abstract class VRPInstance {
         capacity += demandOfCustomer[i];
       }
       // only if its over what it should be, add amount over
-      if (vehicleCapacity > capacity){
+      if (vehicleCapacity < capacity){
         overCapacity += capacity - vehicleCapacity;
       }
     }

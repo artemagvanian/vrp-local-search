@@ -20,7 +20,10 @@ public class Main {
     Timer watch = new Timer();
     watch.start();
     VRPInstanceIncomplete instance = new VRPInstanceIncomplete(input);
-//    VRPInstanceComplete instance = new VRPInstanceComplete(input);
+    watch.stop();
+    Timer watch2 = new Timer();
+    watch2.start();
+//    VRPInstanceComplete instance2 = new VRPInstanceComplete(input);
 
     // Calculate average demand and average loop length for minK and maxK
     int avgDemand =
@@ -30,14 +33,21 @@ public class Main {
     System.out.println("Average demand: " + avgDemand + "; Average loop length: " + avgLoopLength);
 
     // Calling solve for the complete model.
-//     instance.solve(
+//     instance2.solve(
 //        true,
 //        false,
 //        false,
 //        1, instance.numCustomers);
 
-    watch.stop();
-
+    watch2.stop();
+//
+    System.out.println("*************");
+//    System.out.println("{\"Instance2 (COMPLETE) \": \"" + filename +
+//            "\", \"Time\": " + String.format("%.2f", watch2.getTime()) +
+//            ", \"Result\": " + String.format("%.2f", instance2.getTourLength(instance2.routes)) +
+//            ", \"Solution\": \"" + instance2.serializeRoutes() + "\"}");
+    System.out.println("*************");
+    System.out.println("Amount over capacity: " + instance.getAmtOverCapacity(instance.routes));
     System.out.println("{\"Instance\": \"" + filename +
         "\", \"Time\": " + String.format("%.2f", watch.getTime()) +
         ", \"Result\": " + String.format("%.2f", instance.getTourLength(instance.routes)) +
