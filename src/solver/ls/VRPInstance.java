@@ -109,7 +109,7 @@ public abstract class VRPInstance {
   }
 
   // Get tour length from the routes.
-  public double getTourLength() {
+  public double getTourLength(List<List<Integer>> routes) {
     double totalTourLength = 0;
     for (List<Integer> route : routes) {
       for (int j = 0; j < route.size() - 1; j++) {
@@ -117,5 +117,24 @@ public abstract class VRPInstance {
       }
     }
     return totalTourLength;
+  }
+
+  // for each vehicle's route, check how much over capacity it is
+  public double getAmtOverCapacity(List<List<Integer>> routes) {
+    double overCapacity = 0;
+    double capacity = 0;
+    // for each vehicle
+    for (List<Integer> route : routes) {
+      capacity = 0;
+      // calculate capacity
+      for (int i : route) {
+        capacity += demandOfCustomer[i];
+      }
+      // only if its over what it should be, add amount over
+      if (vehicleCapacity > capacity){
+        overCapacity += capacity - vehicleCapacity;
+      }
+    }
+    return overCapacity;
   }
 }
