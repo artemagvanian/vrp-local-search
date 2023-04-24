@@ -35,30 +35,28 @@ public class VRPInstanceIncomplete extends VRPInstance {
 
     int numIterations = 0;
 
-    // keep going while we are looking for a solution
+    // Keep going for a fixed number of iterations.
     do {
       numIterations++;
-      // 2. see if insertions do anything
+      // Calculate both best insertion and best swap.
       bestInsertion = findBestInsertion();
-      if (bestInsertion != null) {
+      bestSwap = findBestSwap();
+
+      if (bestInsertion.newObjective() <= bestSwap.newObjective()) {
         System.out.println("Performing action: " + bestInsertion);
         objective = bestInsertion.newObjective();
-        // perform the insertion of the original coordinate into the new spot
+        // Perform the insertion of the original coordinate into the new spot.
         routes.get(bestInsertion.toRouteIdx())
             .add(bestInsertion.toCustomerIdx(),
                 routes.get(bestInsertion.fromRouteIdx()).get(bestInsertion.fromCustomerIdx()));
-        // remove the original value
+        // Remove the original value.
         routes.get(bestInsertion.fromRouteIdx()).remove(bestInsertion.fromCustomerIdx());
       }
 
-      // 3. see if swaps do anything
-      // currently lambda = 1
-      bestSwap = findBestSwap();
-      // there exists some swap that will improve the solution
-      if (bestSwap != null) {
+      if (bestSwap.newObjective() < bestInsertion.newObjective()) {
         System.out.println("Performing action: " + bestSwap);
         objective = bestSwap.newObjective();
-        // perform the actual swap
+        // Perform the actual swap.
         performSwap(bestSwap.fromRouteIdx(), bestSwap.fromCustomerIdx(),
             bestSwap.toRouteIdx(), bestSwap.toCustomerIdx());
       }
@@ -77,10 +75,10 @@ public class VRPInstanceIncomplete extends VRPInstance {
       System.out.println("Current objective: " + objective);
       System.out.println("Penalty Coefficient: " + excessCapacityPenaltyCoefficient);
 
-    } while ((bestInsertion != null || bestSwap != null) && numIterations < maxIterations);
+    } while (numIterations < maxIterations);
   }
 
-  // calculate insertions
+  // Find the best possible insertion.
   private OneInterchange findBestInsertion() {
     double newObjective = Double.POSITIVE_INFINITY;
     OneInterchange bestInsertion = null;
@@ -102,41 +100,41 @@ public class VRPInstanceIncomplete extends VRPInstance {
     return bestInsertion;
   }
 
-  // find all places where the given customer at route index can be
+  // Find the best possible insertion for a given customer.
   private OneInterchange findBestInsertionForCustomer(int currentRouteIdx, int currentCustomerIdx) {
     double bestObjective = Double.POSITIVE_INFINITY;
     int bestRouteIdx = currentRouteIdx;
     int bestCustomerIdx = currentCustomerIdx;
     int customer = routes.get(currentRouteIdx).get(currentCustomerIdx);
 
-    // remove the customer from where it currently is
+    // Remove the customer from where it currently is.
     routes.get(currentRouteIdx).remove(currentCustomerIdx);
 
-    // iterate over every place in the route
+    // Iterate over every place in the route.
     for (int routeIdx = 0; routeIdx < routes.size(); routeIdx++) {
       if (routeIdx == currentRouteIdx) {
         continue;
       }
-      List<Integer> r = routes.get(routeIdx);
-      for (int insertAtIdx = 1; insertAtIdx < r.size(); insertAtIdx++) {
-        // add this current insertion into this route
-        r.add(insertAtIdx, customer);
+      List<Integer> route = routes.get(routeIdx);
+      for (int insertAtIdx = 1; insertAtIdx < route.size(); insertAtIdx++) {
+        // Add current insertion into the route.
+        route.add(insertAtIdx, customer);
 
-        // calculate objective function and check it, accounting for infeasibility
+        // Calculate objective function and check whether it is better than the current.
         double newObjective = calculateObjective();
         if (newObjective < bestObjective) {
-          // save the best places to insert this customer
+          // Save the best place to insert this customer so far.
           bestRouteIdx = routeIdx;
           bestCustomerIdx = insertAtIdx;
           bestObjective = newObjective;
         }
 
-        // reset back to the original for next iteration
-        r.remove(insertAtIdx);
+        // Reset back to the original for next iteration.
+        route.remove(insertAtIdx);
       }
     }
 
-    // reset back to the original route
+    // Reset back to the original route.
     routes.get(currentRouteIdx).add(currentCustomerIdx, customer);
 
     return new OneInterchange(
@@ -144,29 +142,27 @@ public class VRPInstanceIncomplete extends VRPInstance {
         currentRouteIdx, currentCustomerIdx, bestRouteIdx, bestCustomerIdx);
   }
 
-  // calculate the effect of swapping on every pair of customers
+  // Find the best possible swap.
   private OneInterchange findBestSwap() {
-    // THIS WORK CAN maybe? BE OPTIMIZED TO DONE BEFOREHAND
-    // calculate all pairs of customers that aren't on the same route
+    // TODO: this takes a lot of time to calculate, we should consider alternatives.
+    // Calculate all pairs of customers that aren't on the same route.
     List<OneInterchange> customerPairs = getAllSwaps();
 
     OneInterchange bestSwap = null;
     double bestObjective = Double.POSITIVE_INFINITY;
 
-    // for each pair
+    // For each generated pair.
     for (OneInterchange swap : customerPairs) {
-      // swap
       performSwap(swap.fromRouteIdx(), swap.fromCustomerIdx(), swap.toRouteIdx(),
           swap.toCustomerIdx());
-      // calculate new objective function
       double newObjective = calculateObjective();
-      // swap back
+      // Swap back.
       performSwap(swap.fromRouteIdx(), swap.fromCustomerIdx(), swap.toRouteIdx(),
           swap.toCustomerIdx());
 
-      // if it was better than the current strategy
+      // If we are better than what we have now.
       if (newObjective < bestObjective) {
-        // save these values
+        // Update the best values so far.
         bestObjective = newObjective;
         bestSwap = new OneInterchange(InterchangeType.Swap, newObjective,
             swap.fromRouteIdx(), swap.fromCustomerIdx(), swap.toRouteIdx(), swap.toCustomerIdx());
@@ -176,17 +172,16 @@ public class VRPInstanceIncomplete extends VRPInstance {
     return bestSwap;
   }
 
-  // calculates all pairs of customer indices, excluding those on the same route
-  // It's essentially a list of tuples of coordinate pairs
+  // Calculates all pairs of customer indices, excluding those on the same route.
   private List<OneInterchange> getAllSwaps() {
     List<OneInterchange> swaps = new ArrayList<>();
 
-    // iterate through all routes
+    // Iterate through all routes.
     for (int routeIdx1 = 0; routeIdx1 < routes.size(); routeIdx1++) {
       for (int routeIdx2 = routeIdx1 + 1; routeIdx2 < routes.size(); routeIdx2++) {
         List<Integer> route1 = routes.get(routeIdx1);
         List<Integer> route2 = routes.get(routeIdx2);
-        // account for depots here
+        // Account for depots here.
         for (int customerIdx1 = 1; customerIdx1 < route1.size() - 1; customerIdx1++) {
           for (int customerIdx2 = 1; customerIdx2 < route2.size() - 1; customerIdx2++) {
             swaps.add(new OneInterchange(InterchangeType.Swap, 0,
@@ -213,7 +208,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
         + calculateExcessCapacity(routes) * excessCapacityPenaltyCoefficient;
   }
 
-  // for each vehicle's route, check how much over capacity it is
+  // For each vehicle's route, check how much over capacity it is.
   public double calculateExcessCapacity(List<List<Integer>> routes) {
     double excessCapacity = 0;
     // for each vehicle
@@ -256,7 +251,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
         }
       }
 
-      // Enforce each customer (item) being assigned to only one vehicle (bin)
+      // Enforce each customer (item) being assigned to only one vehicle (bin).
       for (int i = 0; i < numCustomers - 1; i++) {
         IloLinearNumExpr totalAssignments = bppModel.linearNumExpr();
         for (int j = 0; j < numVehicles; j++) {
@@ -265,7 +260,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
         bppModel.addEq(totalAssignments, 1);
       }
 
-      // Enforce capacity constraints
+      // Enforce capacity constraints.
       for (int i = 0; i < numVehicles; i++) {
         IloLinearNumExpr totalLoad = bppModel.linearNumExpr();
         for (int j = 0; j < numCustomers - 1; j++) {
