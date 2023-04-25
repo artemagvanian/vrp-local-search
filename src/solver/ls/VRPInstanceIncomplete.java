@@ -7,7 +7,7 @@ import ilog.cplex.IloCplex;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-
+import java.util.Random;
 
 public class VRPInstanceIncomplete extends VRPInstance {
 
@@ -19,6 +19,14 @@ public class VRPInstanceIncomplete extends VRPInstance {
    * For how many iterations the customer should not be touched after a move.
    */
   private final int tabuTenure;
+  /**
+   * The minimum value tabuTenure can take.
+   */
+  private final int tabuMin;
+  /**
+   * The maximum value tabuTenure can take.
+   */
+  private final int tabuMax;
   /**
    * Memory list to keep the recently moved customers.
    */
@@ -41,11 +49,13 @@ public class VRPInstanceIncomplete extends VRPInstance {
     // Copy parameters.
     this.maxIterations = maxIterations;
     this.tabuTenure = 5;
+    this.tabuMax = 25; //(int)(numCustomers * 1.5);
+    this.tabuMin = 1;
     // Generate the initial solution, initialize variables.
     routes = generateInitialSolution();
     incumbent = cloneRoutes(routes);
     objective = calculateObjective();
-    shortTermMemory = new ArrayList<>(tabuTenure);
+    shortTermMemory = new ArrayList<>();
     // Objective of the initial solution.
     System.out.println("Initial objective: " + objective);
     // Perform search for a given number of iterations.
@@ -79,7 +89,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
           // Add the customer to the short-term memory.
           shortTermMemory.add(new TabuItem(
               routes.get(bestInsertion.fromRouteIdx).get(bestInsertion.fromCustomerIdx),
-              currentIteration));
+              currentIteration + randomTabu()));
           // Perform the insertion of the original coordinate into the new spot.
           routes.get(bestInsertion.toRouteIdx)
               .add(bestInsertion.toCustomerIdx,
@@ -95,17 +105,18 @@ public class VRPInstanceIncomplete extends VRPInstance {
           // Add the customers to the short-term memory.
           shortTermMemory.add(
               new TabuItem(routes.get(bestSwap.fromRouteIdx).get(bestSwap.fromCustomerIdx),
-                  currentIteration));
+                  currentIteration + randomTabu()));
           shortTermMemory.add(
               new TabuItem(routes.get(bestSwap.toRouteIdx).get(bestSwap.toCustomerIdx),
-                  currentIteration));
+                  currentIteration + randomTabu()));
         }
       }
 
       // Remove all tabu items that are past the tenure.
       int finalCurrentIteration = currentIteration;
+
       shortTermMemory.removeIf(
-          tabuItem -> (tabuItem.iteration + tabuTenure < finalCurrentIteration));
+          tabuItem -> (tabuItem.experationIteration < finalCurrentIteration));
 
       // Check whether we should update the incumbent.
       if (getTourLength(routes) < getTourLength(incumbent)
@@ -118,7 +129,9 @@ public class VRPInstanceIncomplete extends VRPInstance {
         excessCapacityPenaltyCoefficient /= 1.25;
       } else {
         excessCapacityPenaltyCoefficient *= 1.25;
+        excessCapacityPenaltyCoefficient = Math.min(excessCapacityPenaltyCoefficient, 1000000);
       }
+
 
       // Log the data to the console.
       System.out.println("Iteration #" + currentIteration);
@@ -166,6 +179,16 @@ public class VRPInstanceIncomplete extends VRPInstance {
     }
 
     return bestInsertion;
+  }
+
+  /**
+   * calculates a random tabu value, on a uniform distribution, according to [tabuMin, tabuMax]
+   *
+   * @return random int for tabu storage
+   */
+  private int randomTabu() {
+    Random rand = new Random();
+    return rand.nextInt((tabuMax - tabuMin) + 1) + tabuMin;
   }
 
   /**

@@ -3,18 +3,18 @@ package solver.ls;
 public class TabuItem {
 
   public final int customer;
-  public final int iteration;
+  public final int experationIteration;
 
-  public TabuItem(int customer, int iteration) {
+  public TabuItem(int customer, int experationIteration) {
     this.customer = customer;
-    this.iteration = iteration;
+    this.experationIteration = experationIteration;
   }
 
   @Override
   public String toString() {
     return "TabuItem{" +
         "customer=" + customer +
-        ", iteration=" + iteration +
+        ", iteration=" + experationIteration +
         '}';
   }
 }
