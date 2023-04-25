@@ -1,5 +1,12 @@
 package solver.ls;
 
-public record TabuItem(int customer, int iteration) {
+public class TabuItem {
 
+  public final int customer;
+  public final int iteration;
+
+  public TabuItem(int customer, int iteration) {
+    this.customer = customer;
+    this.iteration = iteration;
+  }
 }

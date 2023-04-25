@@ -73,31 +73,31 @@ public class VRPInstanceIncomplete extends VRPInstance {
       if (bestInsertion != null || bestSwap != null) {
         // If current best insertion is better.
         if (bestSwap == null || (bestInsertion != null
-            && bestInsertion.newObjective() <= bestSwap.newObjective())) {
+            && bestInsertion.newObjective <= bestSwap.newObjective)) {
           System.out.println("Performing action: " + bestInsertion);
-          objective = bestInsertion.newObjective();
+          objective = bestInsertion.newObjective;
           // Add the customer to the short-term memory.
           shortTermMemory.add(new TabuItem(
-              routes.get(bestInsertion.fromRouteIdx()).get(bestInsertion.fromCustomerIdx()),
+              routes.get(bestInsertion.fromRouteIdx).get(bestInsertion.fromCustomerIdx),
               currentIteration));
           // Perform the insertion of the original coordinate into the new spot.
-          routes.get(bestInsertion.toRouteIdx())
-              .add(bestInsertion.toCustomerIdx(),
-                  routes.get(bestInsertion.fromRouteIdx()).get(bestInsertion.fromCustomerIdx()));
+          routes.get(bestInsertion.toRouteIdx)
+              .add(bestInsertion.toCustomerIdx,
+                  routes.get(bestInsertion.fromRouteIdx).get(bestInsertion.fromCustomerIdx));
           // Remove the original value.
-          routes.get(bestInsertion.fromRouteIdx()).remove(bestInsertion.fromCustomerIdx());
+          routes.get(bestInsertion.fromRouteIdx).remove(bestInsertion.fromCustomerIdx);
         } else { // If current best swap is better.
           System.out.println("Performing action: " + bestSwap);
-          objective = bestSwap.newObjective();
+          objective = bestSwap.newObjective;
           // Perform the actual swap.
-          performSwap(bestSwap.fromRouteIdx(), bestSwap.fromCustomerIdx(),
-              bestSwap.toRouteIdx(), bestSwap.toCustomerIdx());
+          performSwap(bestSwap.fromRouteIdx, bestSwap.fromCustomerIdx,
+              bestSwap.toRouteIdx, bestSwap.toCustomerIdx);
           // Add the customers to the short-term memory.
           shortTermMemory.add(
-              new TabuItem(routes.get(bestSwap.fromRouteIdx()).get(bestSwap.fromCustomerIdx()),
+              new TabuItem(routes.get(bestSwap.fromRouteIdx).get(bestSwap.fromCustomerIdx),
                   currentIteration));
           shortTermMemory.add(
-              new TabuItem(routes.get(bestSwap.toRouteIdx()).get(bestSwap.toCustomerIdx()),
+              new TabuItem(routes.get(bestSwap.toRouteIdx).get(bestSwap.toCustomerIdx),
                   currentIteration));
         }
       }
@@ -105,7 +105,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
       // Remove all tabu items that are past the tenure.
       int finalCurrentIteration = currentIteration;
       shortTermMemory.removeIf(
-          tabuItem -> (tabuItem.iteration() + tabuTenure < finalCurrentIteration));
+          tabuItem -> (tabuItem.iteration + tabuTenure < finalCurrentIteration));
 
       // Check whether we should update the incumbent.
       if (getTourLength(routes) < getTourLength(incumbent)
@@ -144,7 +144,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
         // Check whether the current customer is in the tabu list.
         boolean isCustomerTabu = false;
         for (TabuItem tabuCustomer : shortTermMemory) {
-          if (Objects.equals(routes.get(routeIdx).get(customerIdx), tabuCustomer.customer())) {
+          if (Objects.equals(routes.get(routeIdx).get(customerIdx), tabuCustomer.customer)) {
             isCustomerTabu = true;
             break;
           }
@@ -158,8 +158,8 @@ public class VRPInstanceIncomplete extends VRPInstance {
             findBestInsertionForCustomer(routeIdx, customerIdx);
 
         // If we have a new winner.
-        if (bestInsertionForCustomer.newObjective() < newObjective) {
-          newObjective = bestInsertionForCustomer.newObjective();
+        if (bestInsertionForCustomer.newObjective < newObjective) {
+          newObjective = bestInsertionForCustomer.newObjective;
           bestInsertion = bestInsertionForCustomer;
         }
       }
@@ -234,10 +234,10 @@ public class VRPInstanceIncomplete extends VRPInstance {
       // Check whether the current customer is in the tabu list.
       boolean isPairTabu = false;
       for (TabuItem tabuCustomer : shortTermMemory) {
-        if (Objects.equals(routes.get(swap.fromRouteIdx()).get(swap.fromCustomerIdx()),
-            tabuCustomer.customer())
-            || Objects.equals(routes.get(swap.toRouteIdx()).get(swap.toCustomerIdx()),
-            tabuCustomer.customer())) {
+        if (Objects.equals(routes.get(swap.fromRouteIdx).get(swap.fromCustomerIdx),
+            tabuCustomer.customer)
+            || Objects.equals(routes.get(swap.toRouteIdx).get(swap.toCustomerIdx),
+            tabuCustomer.customer)) {
           isPairTabu = true;
           break;
         }
@@ -247,19 +247,19 @@ public class VRPInstanceIncomplete extends VRPInstance {
       }
 
       // Swap forward.
-      performSwap(swap.fromRouteIdx(), swap.fromCustomerIdx(), swap.toRouteIdx(),
-          swap.toCustomerIdx());
+      performSwap(swap.fromRouteIdx, swap.fromCustomerIdx, swap.toRouteIdx,
+          swap.toCustomerIdx);
       double newObjective = calculateObjective();
       // Swap back.
-      performSwap(swap.fromRouteIdx(), swap.fromCustomerIdx(), swap.toRouteIdx(),
-          swap.toCustomerIdx());
+      performSwap(swap.fromRouteIdx, swap.fromCustomerIdx, swap.toRouteIdx,
+          swap.toCustomerIdx);
 
       // If we are better than what we have now.
       if (newObjective < bestObjective) {
         // Update the best values so far.
         bestObjective = newObjective;
         bestSwap = new OneInterchange(InterchangeType.Swap, newObjective,
-            swap.fromRouteIdx(), swap.fromCustomerIdx(), swap.toRouteIdx(), swap.toCustomerIdx());
+            swap.fromRouteIdx, swap.fromCustomerIdx, swap.toRouteIdx, swap.toCustomerIdx);
       }
     }
 
