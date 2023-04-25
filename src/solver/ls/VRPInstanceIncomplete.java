@@ -47,10 +47,14 @@ public class VRPInstanceIncomplete extends VRPInstance {
   VRPInstanceIncomplete(String fileName, int maxIterations) {
     super(fileName);
     // Copy parameters.
-    this.maxIterations = maxIterations;
+    if (numCustomers < 51) {
+      this.maxIterations = maxIterations * 100;
+    } else {
+      this.maxIterations = maxIterations;
+    }
     this.tabuTenure = 5;
     this.tabuMax = Math.min(numCustomers / 2, 32);
-    this.tabuMin = 1;
+    this.tabuMin = 3;
     // Generate the initial solution, initialize variables.
     routes = generateInitialSolution();
     incumbent = cloneRoutes(routes);
