@@ -36,11 +36,11 @@ public class VRPInstanceIncomplete extends VRPInstance {
    */
   private double excessCapacityPenaltyCoefficient = 1;
 
-  VRPInstanceIncomplete(String fileName, int maxIterations, int tabuTenure) {
+  VRPInstanceIncomplete(String fileName, int maxIterations) {
     super(fileName);
     // Copy parameters.
     this.maxIterations = maxIterations;
-    this.tabuTenure = tabuTenure;
+    this.tabuTenure = 5;
     // Generate the initial solution, initialize variables.
     routes = generateInitialSolution();
     incumbent = cloneRoutes(routes);

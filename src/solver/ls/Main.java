@@ -1,12 +1,16 @@
 package solver.ls;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 // import java.util.stream.IntStream;
 
 public class Main {
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws IOException {
     if (args.length == 0) {
       System.out.println("Usage: java Main <file>");
       return;
@@ -19,8 +23,7 @@ public class Main {
 
     Timer watch = new Timer();
     watch.start();
-    VRPInstanceIncomplete incompleteInstance =
-        new VRPInstanceIncomplete(input, 10000, 5);
+    VRPInstanceIncomplete incompleteInstance = new VRPInstanceIncomplete(input, 10000);
     watch.stop();
 
     /*
@@ -55,9 +58,25 @@ public class Main {
      */
 
     System.out.println(
-        "Amount over capacity (except it to be 0): " + incompleteInstance.calculateExcessCapacity(
+        "Amount over capacity (expect it to be 0): " + incompleteInstance.calculateExcessCapacity(
             incompleteInstance.incumbent));
 
+    // Generate the solution files.
+    String instanceHeader =
+        String.format("%.2f", incompleteInstance.getTourLength(incompleteInstance.incumbent))
+            + " 0\n";
+    BufferedWriter writer = new BufferedWriter(new FileWriter("./solutions/" + filename + ".sol"));
+    writer.write(instanceHeader);
+    // Serialize routes one-by-one.
+    for (List<Integer> route : incompleteInstance.incumbent) {
+      for (Integer customer : route) {
+        writer.write(customer + " ");
+      }
+      writer.write("\n");
+    }
+    writer.close();
+
+    // Output the instance string.
     System.out.println("{\"Instance\": \"" + filename +
         "\", \"Time\": " + String.format("%.2f", watch.getTime()) +
         ", \"Result\": " + String.format("%.2f",
