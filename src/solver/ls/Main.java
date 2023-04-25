@@ -19,7 +19,8 @@ public class Main {
 
     Timer watch = new Timer();
     watch.start();
-    VRPInstanceIncomplete incompleteInstance = new VRPInstanceIncomplete(input, 1000);
+    VRPInstanceIncomplete incompleteInstance =
+        new VRPInstanceIncomplete(input, 10000, 5);
     watch.stop();
 
     /*
@@ -53,8 +54,9 @@ public class Main {
     System.out.println("*************");
      */
 
-    System.out.println("Amount over capacity: " + incompleteInstance.calculateExcessCapacity(
-        incompleteInstance.incumbent));
+    System.out.println(
+        "Amount over capacity (except it to be 0): " + incompleteInstance.calculateExcessCapacity(
+            incompleteInstance.incumbent));
 
     System.out.println("{\"Instance\": \"" + filename +
         "\", \"Time\": " + String.format("%.2f", watch.getTime()) +
