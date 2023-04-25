@@ -49,7 +49,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
     // Copy parameters.
     this.maxIterations = maxIterations;
     this.tabuTenure = 5;
-    this.tabuMax = 25; //(int)(numCustomers * 1.5);
+    this.tabuMax = Math.min(numCustomers / 2, 32);
     this.tabuMin = 1;
     // Generate the initial solution, initialize variables.
     routes = generateInitialSolution();
@@ -131,7 +131,6 @@ public class VRPInstanceIncomplete extends VRPInstance {
         excessCapacityPenaltyCoefficient *= 1.25;
         excessCapacityPenaltyCoefficient = Math.min(excessCapacityPenaltyCoefficient, 1000000);
       }
-
 
       // Log the data to the console.
       System.out.println("Iteration #" + currentIteration);
