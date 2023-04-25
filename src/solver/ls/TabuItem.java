@@ -9,4 +9,12 @@ public class TabuItem {
     this.customer = customer;
     this.iteration = iteration;
   }
+
+  @Override
+  public String toString() {
+    return "TabuItem{" +
+        "customer=" + customer +
+        ", iteration=" + iteration +
+        '}';
+  }
 }

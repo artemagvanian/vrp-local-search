@@ -18,4 +18,16 @@ public class OneInterchange {
     this.toRouteIdx = toRouteIdx;
     this.toCustomerIdx = toCustomerIdx;
   }
+
+  @Override
+  public String toString() {
+    return "OneInterchange{" +
+        "type=" + type +
+        ", newObjective=" + newObjective +
+        ", fromRouteIdx=" + fromRouteIdx +
+        ", fromCustomerIdx=" + fromCustomerIdx +
+        ", toRouteIdx=" + toRouteIdx +
+        ", toCustomerIdx=" + toCustomerIdx +
+        '}';
+  }
 }

@@ -21,9 +21,11 @@ public class Main {
     String filename = path.getFileName().toString();
     System.out.println("Instance: " + input);
 
+    final int maxIterations = 10000;
+
     Timer watch = new Timer();
     watch.start();
-    VRPInstanceIncomplete incompleteInstance = new VRPInstanceIncomplete(input, 10000);
+    VRPInstanceIncomplete incompleteInstance = new VRPInstanceIncomplete(input, maxIterations);
     watch.stop();
 
     /*
@@ -60,6 +62,8 @@ public class Main {
     System.out.println(
         "Amount over capacity (expect it to be 0): " + incompleteInstance.calculateExcessCapacity(
             incompleteInstance.incumbent));
+    System.out.println("Average time per iteration (µs): "
+        + String.format("%.2f", Math.pow(10, 6) * watch.getTime() / maxIterations));
 
     // Generate the solution files.
     String instanceHeader =
