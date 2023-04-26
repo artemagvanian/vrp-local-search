@@ -5,7 +5,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 // import java.util.stream.IntStream;
 
 public class Main {
@@ -62,18 +61,17 @@ public class Main {
     System.out.println(
         "Amount over capacity (expect it to be 0): " + incompleteInstance.calculateExcessCapacity(
             incompleteInstance.incumbent));
-    System.out.println("Average time per iteration (µs): "
-        + String.format("%.2f", Math.pow(10, 6) * watch.getTime() / maxIterations));
+    System.out.println("Average time per iteration (µs): " + String.format("%.2f",
+        Math.pow(10, 6) * watch.getTime() / maxIterations));
 
     // Generate the solution files.
     String instanceHeader =
-        String.format("%.2f", incompleteInstance.getTourLength(incompleteInstance.incumbent))
-            + " 0\n";
+        String.format("%.2f", incompleteInstance.incumbent.totalLength) + " 0\n";
     BufferedWriter writer = new BufferedWriter(new FileWriter("./solutions/" + filename + ".sol"));
     writer.write(instanceHeader);
     // Serialize routes one-by-one.
-    for (List<Integer> route : incompleteInstance.incumbent) {
-      for (Integer customer : route) {
+    for (Route route : incompleteInstance.incumbent.routes) {
+      for (Integer customer : route.customers) {
         writer.write(customer + " ");
       }
       writer.write("\n");
@@ -81,11 +79,10 @@ public class Main {
     writer.close();
 
     // Output the instance string.
-    System.out.println("{\"Instance\": \"" + filename +
-        "\", \"Time\": " + String.format("%.2f", watch.getTime()) +
-        ", \"Result\": " + String.format("%.2f",
-        incompleteInstance.getTourLength(incompleteInstance.incumbent)) +
-        ", \"Solution\": \"" + incompleteInstance.serializeRoutes(incompleteInstance.incumbent)
-        + "\"}");
+    System.out.println(
+        "{\"Instance\": \"" + filename + "\", \"Time\": " + String.format("%.2f", watch.getTime())
+            + ", \"Result\": " + String.format("%.2f", incompleteInstance.incumbent.totalLength)
+            + ", \"Solution\": \"" + incompleteInstance.serializeRoutes(
+            incompleteInstance.incumbent) + "\"}");
   }
 }

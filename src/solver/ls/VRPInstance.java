@@ -2,8 +2,6 @@ package solver.ls;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Scanner;
 
 public abstract class VRPInstance {
@@ -16,8 +14,6 @@ public abstract class VRPInstance {
   public double[] xCoordOfCustomer;        // the x coordinate of each customer
   public double[] yCoordOfCustomer;        // the y coordinate of each customer
   public double[][] distances;             // distances between all customers
-
-  public List<List<Integer>> routes;       // routes for each of the trucks
 
 
   protected VRPInstance(String fileName) {
@@ -67,55 +63,13 @@ public abstract class VRPInstance {
     // Calculate distances.
     for (int i = 0; i < numCustomers; i++) {
       for (int j = 0; j < numCustomers; j++) {
-        distances[i][j] = distance(xCoordOfCustomer[i], xCoordOfCustomer[j],
-            yCoordOfCustomer[i], yCoordOfCustomer[j]);
+        distances[i][j] = distance(xCoordOfCustomer[i], xCoordOfCustomer[j], yCoordOfCustomer[i],
+            yCoordOfCustomer[j]);
       }
     }
 
     return distances;
   }
 
-  // Serialize all routes into the required format.
-  public String serializeRoutes(List<List<Integer>> routes) {
-    // Add the vehicles that didn't go
-    int excessVehicles = numVehicles - routes.size();
-    for (int i = 0; i < excessVehicles; i++) {
-      ArrayList<Integer> excess = new ArrayList<>();
-      excess.add(0);
-      excess.add(0);
-      routes.add(excess);
-    }
 
-    System.out.println("Routes: " + routes.size());
-    for (List<Integer> walk : routes) {
-      for (int j : walk) {
-        System.out.print(j + " ");
-      }
-      System.out.println();
-    }
-
-    // convert to a string
-    List<Integer> flattenedList = new ArrayList<>();
-    flattenedList.add(1); // NOTE: 1 HERE IF PROVED OPTIMAL, ELSE 0
-    for (List<Integer> innerList : routes) {
-      flattenedList.addAll(innerList);
-    }
-    StringBuilder sb = new StringBuilder();
-    for (Integer number : flattenedList) {
-      sb.append(number).append(" ");
-    }
-
-    return sb.toString().trim();
-  }
-
-  // Get tour length from the routes.
-  public double getTourLength(List<List<Integer>> routes) {
-    double totalTourLength = 0;
-    for (List<Integer> route : routes) {
-      for (int j = 0; j < route.size() - 1; j++) {
-        totalTourLength += distances[route.get(j)][route.get(j + 1)];
-      }
-    }
-    return totalTourLength;
-  }
 }

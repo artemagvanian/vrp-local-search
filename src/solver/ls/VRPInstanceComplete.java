@@ -12,6 +12,9 @@ import java.util.Set;
 
 public class VRPInstanceComplete extends VRPInstance {
 
+  public List<List<Integer>> routes;       // routes for each of the trucks
+
+
   public VRPInstanceComplete(String fileName) {
     super(fileName);
   }
@@ -46,12 +49,8 @@ public class VRPInstanceComplete extends VRPInstance {
   }
 
   // Solve the model.
-  public void solve(
-      boolean useBppApproximation,
-      boolean relaxCapacityConstraints,
-      boolean relaxToContinuous,
-      int minK,
-      int maxK) {
+  public void solve(boolean useBppApproximation, boolean relaxCapacityConstraints,
+      boolean relaxToContinuous, int minK, int maxK) {
     try (IloCplex cplex = new IloCplex()) {
       // 0. Setup of decision variables.
       // We are indexing until numCustomers + 1 since we have to account for the depot.
@@ -226,8 +225,7 @@ public class VRPInstanceComplete extends VRPInstance {
       for (int i = 0; i < numVehicles; i++) {
         IloLinearNumExpr totalLoad = bppModel.linearNumExpr();
         for (int j = 0; j < customers.size(); j++) {
-          totalLoad.addTerm(customerVehicleAssignment[j][i],
-              demandOfCustomer[customers.get(j)]);
+          totalLoad.addTerm(customerVehicleAssignment[j][i], demandOfCustomer[customers.get(j)]);
         }
         IloLinearNumExpr maxLoad = bppModel.linearNumExpr();
         maxLoad.addTerm(vehicleCapacity, useVehicles[i]);
@@ -259,9 +257,8 @@ public class VRPInstanceComplete extends VRPInstance {
   }
 
   // Helper to calculate list of paths for adjacency matrix.
-  private void dfs(int[][] adjacencyMatrix, int startNode, int currentNode,
-      boolean[] visited, List<Integer> currentCircuit,
-      List<List<Integer>> allCircuits, Set<Integer> seen) {
+  private void dfs(int[][] adjacencyMatrix, int startNode, int currentNode, boolean[] visited,
+      List<Integer> currentCircuit, List<List<Integer>> allCircuits, Set<Integer> seen) {
     visited[currentNode] = true;
     currentCircuit.add(currentNode);
 
@@ -278,5 +275,49 @@ public class VRPInstanceComplete extends VRPInstance {
 
     visited[currentNode] = false;
     currentCircuit.remove(currentCircuit.size() - 1);
+  }
+
+  // Serialize all routes into the required format.
+  public String serializeRoutes(List<List<Integer>> routes) {
+    // Add the vehicles that didn't go
+    int excessVehicles = numVehicles - routes.size();
+    for (int i = 0; i < excessVehicles; i++) {
+      ArrayList<Integer> excess = new ArrayList<>();
+      excess.add(0);
+      excess.add(0);
+      routes.add(excess);
+    }
+
+    System.out.println("Routes: " + routes.size());
+    for (List<Integer> walk : routes) {
+      for (int j : walk) {
+        System.out.print(j + " ");
+      }
+      System.out.println();
+    }
+
+    // convert to a string
+    List<Integer> flattenedList = new ArrayList<>();
+    flattenedList.add(1); // NOTE: 1 HERE IF PROVED OPTIMAL, ELSE 0
+    for (List<Integer> innerList : routes) {
+      flattenedList.addAll(innerList);
+    }
+    StringBuilder sb = new StringBuilder();
+    for (Integer number : flattenedList) {
+      sb.append(number).append(" ");
+    }
+
+    return sb.toString().trim();
+  }
+
+  // Get tour length from the routes.
+  public double getTourLength(List<List<Integer>> routes) {
+    double totalTourLength = 0;
+    for (List<Integer> route : routes) {
+      for (int j = 0; j < route.size() - 1; j++) {
+        totalTourLength += distances[route.get(j)][route.get(j + 1)];
+      }
+    }
+    return totalTourLength;
   }
 }

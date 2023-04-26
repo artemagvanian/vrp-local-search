@@ -16,25 +16,29 @@ public class VRPInstanceIncomplete extends VRPInstance {
    */
   private final int maxIterations;
   /**
-   * For how many iterations the customer should not be touched after a move.
+   * The minimum value tabu tenure can take.
    */
-  private final int tabuTenure;
+  private final int minimumTabuTenure;
   /**
-   * The minimum value tabuTenure can take.
+   * The maximum value tabu tenure can take.
    */
-  private final int tabuMin;
-  /**
-   * The maximum value tabuTenure can take.
-   */
-  private final int tabuMax;
+  private final int maximumTabuTenure;
   /**
    * Memory list to keep the recently moved customers.
    */
   private final List<TabuItem> shortTermMemory;
   /**
+   * Random number generator for the instance.
+   */
+  private final Random rand;
+  /**
    * Current best solution, with no excess capacity.
    */
-  public List<List<Integer>> incumbent;
+  public RouteList incumbent;
+  /**
+   * Current solution, not necessarily optimal.
+   */
+  public RouteList routeList;
   /**
    * Current best objective, calculated as specified by the objective function.
    */
@@ -47,19 +51,16 @@ public class VRPInstanceIncomplete extends VRPInstance {
   VRPInstanceIncomplete(String fileName, int maxIterations) {
     super(fileName);
     // Copy parameters.
-    if (numCustomers < 51) {
-      this.maxIterations = maxIterations * 100;
-    } else {
-      this.maxIterations = maxIterations;
-    }
-    this.tabuTenure = 5;
-    this.tabuMax = Math.min(numCustomers / 2, 32);
-    this.tabuMin = 3;
+    this.maxIterations = maxIterations;
+    // Set tabu tenure limits
+    this.minimumTabuTenure = 5;
+    this.maximumTabuTenure = 5;
     // Generate the initial solution, initialize variables.
-    routes = generateInitialSolution();
-    incumbent = cloneRoutes(routes);
-    objective = calculateObjective();
+    routeList = generateInitialSolution();
+    incumbent = routeList.clone();
+    objective = calculateObjective(incumbent.totalLength, 0);
     shortTermMemory = new ArrayList<>();
+    rand = new Random();
     // Objective of the initial solution.
     System.out.println("Initial objective: " + objective);
     // Perform search for a given number of iterations.
@@ -83,53 +84,55 @@ public class VRPInstanceIncomplete extends VRPInstance {
       bestInsertion = findBestInsertion();
       bestSwap = findBestSwap();
 
+      double insertionObjective = bestInsertion == null ? Double.POSITIVE_INFINITY
+          : calculateObjective(
+              routeList.totalLength + routeList.calculateEdgeDelta(bestInsertion, distances),
+              routeList.calculateExcessCapacity(bestInsertion, demandOfCustomer, vehicleCapacity));
+      double swapObjective = bestSwap == null ? Double.POSITIVE_INFINITY : calculateObjective(
+          routeList.totalLength + routeList.calculateEdgeDelta(bestSwap, distances),
+          routeList.calculateExcessCapacity(bestSwap, demandOfCustomer, vehicleCapacity));
+
       // Only perform an action if either of the interchanges is not null.
       if (bestInsertion != null || bestSwap != null) {
         // If current best insertion is better.
-        if (bestSwap == null || (bestInsertion != null
-            && bestInsertion.newObjective <= bestSwap.newObjective)) {
+        if (insertionObjective <= swapObjective) {
           System.out.println("Performing action: " + bestInsertion);
-          objective = bestInsertion.newObjective;
+          objective = insertionObjective;
           // Add the customer to the short-term memory.
+          assert bestInsertion != null;
           shortTermMemory.add(new TabuItem(
-              routes.get(bestInsertion.fromRouteIdx).get(bestInsertion.fromCustomerIdx),
-              currentIteration + randomTabu()));
-          // Perform the insertion of the original coordinate into the new spot.
-          routes.get(bestInsertion.toRouteIdx)
-              .add(bestInsertion.toCustomerIdx,
-                  routes.get(bestInsertion.fromRouteIdx).get(bestInsertion.fromCustomerIdx));
-          // Remove the original value.
-          routes.get(bestInsertion.fromRouteIdx).remove(bestInsertion.fromCustomerIdx);
+              routeList.routes.get(bestInsertion.fromRouteIdx).customers.get(
+                  bestInsertion.fromCustomerIdx), currentIteration + getRandomTabuTenure()));
+          routeList.perform(bestInsertion, distances, demandOfCustomer);
         } else { // If current best swap is better.
           System.out.println("Performing action: " + bestSwap);
-          objective = bestSwap.newObjective;
-          // Perform the actual swap.
-          performSwap(bestSwap.fromRouteIdx, bestSwap.fromCustomerIdx,
-              bestSwap.toRouteIdx, bestSwap.toCustomerIdx);
+          objective = swapObjective;
+          assert bestSwap != null;
           // Add the customers to the short-term memory.
-          shortTermMemory.add(
-              new TabuItem(routes.get(bestSwap.fromRouteIdx).get(bestSwap.fromCustomerIdx),
-                  currentIteration + randomTabu()));
-          shortTermMemory.add(
-              new TabuItem(routes.get(bestSwap.toRouteIdx).get(bestSwap.toCustomerIdx),
-                  currentIteration + randomTabu()));
+          shortTermMemory.add(new TabuItem(
+              routeList.routes.get(bestSwap.fromRouteIdx).customers.get(bestSwap.fromCustomerIdx),
+              currentIteration + getRandomTabuTenure()));
+          shortTermMemory.add(new TabuItem(
+              routeList.routes.get(bestSwap.toRouteIdx).customers.get(bestSwap.toCustomerIdx),
+              currentIteration + getRandomTabuTenure()));
+          // Perform the actual swap.
+          routeList.perform(bestSwap, distances, demandOfCustomer);
         }
       }
 
       // Remove all tabu items that are past the tenure.
       int finalCurrentIteration = currentIteration;
 
-      shortTermMemory.removeIf(
-          tabuItem -> (tabuItem.experationIteration < finalCurrentIteration));
+      shortTermMemory.removeIf(tabuItem -> (tabuItem.expirationIteration < finalCurrentIteration));
 
       // Check whether we should update the incumbent.
-      if (getTourLength(routes) < getTourLength(incumbent)
-          && calculateExcessCapacity(routes) == 0) {
-        incumbent = cloneRoutes(routes);
+      if (routeList.totalLength < incumbent.totalLength
+          && calculateExcessCapacity(routeList) == 0) {
+        incumbent = routeList.clone();
       }
 
       // Adjust excess capacity coefficient.
-      if (calculateExcessCapacity(routes) == 0) {
+      if (calculateExcessCapacity(routeList) == 0) {
         excessCapacityPenaltyCoefficient /= 1.25;
       } else {
         excessCapacityPenaltyCoefficient *= 1.25;
@@ -151,16 +154,19 @@ public class VRPInstanceIncomplete extends VRPInstance {
    */
   private OneInterchange findBestInsertion() {
     // We should consider the best available objective to avoid local minima.
-    double newObjective = Double.POSITIVE_INFINITY;
     OneInterchange bestInsertion = null;
+    double bestObjective = Double.POSITIVE_INFINITY;
 
     // Checks every customer index.
-    for (int routeIdx = 0; routeIdx < routes.size(); routeIdx++) {
-      for (int customerIdx = 1; customerIdx < routes.get(routeIdx).size() - 1; customerIdx++) {
+    for (int fromRouteIdx = 0; fromRouteIdx < routeList.routes.size(); fromRouteIdx++) {
+      for (int fromCustomerIdx = 1;
+          fromCustomerIdx < routeList.routes.get(fromRouteIdx).customers.size() - 1;
+          fromCustomerIdx++) {
         // Check whether the current customer is in the tabu list.
         boolean isCustomerTabu = false;
         for (TabuItem tabuCustomer : shortTermMemory) {
-          if (Objects.equals(routes.get(routeIdx).get(customerIdx), tabuCustomer.customer)) {
+          if (Objects.equals(routeList.routes.get(fromRouteIdx).customers.get(fromCustomerIdx),
+              tabuCustomer.customer)) {
             isCustomerTabu = true;
             break;
           }
@@ -169,14 +175,29 @@ public class VRPInstanceIncomplete extends VRPInstance {
           continue;
         }
 
-        // Find the best possible insertion for a given non-tabu customer.
-        OneInterchange bestInsertionForCustomer =
-            findBestInsertionForCustomer(routeIdx, customerIdx);
+        for (int toRouteIdx = 0; toRouteIdx < routeList.routes.size(); toRouteIdx++) {
+          if (toRouteIdx == fromRouteIdx) {
+            continue;
+          }
+          for (int toCustomerIdx = 1;
+              toCustomerIdx < routeList.routes.get(toRouteIdx).customers.size(); toCustomerIdx++) {
+            OneInterchange insertion = new OneInterchange(InterchangeType.Insertion, fromRouteIdx,
+                fromCustomerIdx, toRouteIdx, toCustomerIdx);
 
-        // If we have a new winner.
-        if (bestInsertionForCustomer.newObjective < newObjective) {
-          newObjective = bestInsertionForCustomer.newObjective;
-          bestInsertion = bestInsertionForCustomer;
+            double newTotalLength =
+                routeList.totalLength + routeList.calculateEdgeDelta(insertion, distances);
+            double excessCapacity = routeList.calculateExcessCapacity(insertion, demandOfCustomer,
+                vehicleCapacity);
+
+            // Calculate objective function and check whether it is better than the current.
+            double newObjective =
+                newTotalLength + excessCapacity * excessCapacityPenaltyCoefficient;
+            if (newObjective < bestObjective) {
+              // Save the best place to insert this customer so far.
+              bestInsertion = insertion;
+              bestObjective = newObjective;
+            }
+          }
         }
       }
     }
@@ -185,61 +206,12 @@ public class VRPInstanceIncomplete extends VRPInstance {
   }
 
   /**
-   * calculates a random tabu value, on a uniform distribution, according to [tabuMin, tabuMax]
+   * Calculates a random tabu tenure, on a uniform distribution, according to [tabuMin, tabuMax].
    *
-   * @return random int for tabu storage
+   * @return random tabu tenure.
    */
-  private int randomTabu() {
-    Random rand = new Random();
-    return rand.nextInt((tabuMax - tabuMin) + 1) + tabuMin;
-  }
-
-  /**
-   * Finds the best possible insertion for a given customer.
-   *
-   * @param currentRouteIdx    route index.
-   * @param currentCustomerIdx customer index.
-   * @return best possible insertion for a given customer.
-   */
-  private OneInterchange findBestInsertionForCustomer(int currentRouteIdx, int currentCustomerIdx) {
-    double bestObjective = Double.POSITIVE_INFINITY;
-    int bestRouteIdx = currentRouteIdx;
-    int bestCustomerIdx = currentCustomerIdx;
-    int customer = routes.get(currentRouteIdx).get(currentCustomerIdx);
-
-    // Remove the customer from where it currently is.
-    routes.get(currentRouteIdx).remove(currentCustomerIdx);
-
-    // Iterate over every place in the route.
-    for (int routeIdx = 0; routeIdx < routes.size(); routeIdx++) {
-      if (routeIdx == currentRouteIdx) {
-        continue;
-      }
-      List<Integer> route = routes.get(routeIdx);
-      for (int insertAtIdx = 1; insertAtIdx < route.size(); insertAtIdx++) {
-        // Add current insertion into the route.
-        route.add(insertAtIdx, customer);
-
-        // Calculate objective function and check whether it is better than the current.
-        double newObjective = calculateObjective();
-        if (newObjective < bestObjective) {
-          // Save the best place to insert this customer so far.
-          bestRouteIdx = routeIdx;
-          bestCustomerIdx = insertAtIdx;
-          bestObjective = newObjective;
-        }
-
-        // Reset back to the original for next iteration.
-        route.remove(insertAtIdx);
-      }
-    }
-
-    // Reset back to the original route.
-    routes.get(currentRouteIdx).add(currentCustomerIdx, customer);
-
-    return new OneInterchange(
-        InterchangeType.Insertion, bestObjective,
-        currentRouteIdx, currentCustomerIdx, bestRouteIdx, bestCustomerIdx);
+  private int getRandomTabuTenure() {
+    return rand.nextInt((maximumTabuTenure - minimumTabuTenure) + 1) + minimumTabuTenure;
   }
 
   /**
@@ -248,134 +220,82 @@ public class VRPInstanceIncomplete extends VRPInstance {
    * @return best possible swap from the current routes
    */
   private OneInterchange findBestSwap() {
-    // TODO: this takes a lot of time to calculate, we should consider alternatives.
-    // Calculate all pairs of customers that aren't on the same route.
-    List<OneInterchange> customerPairs = getAllSwaps();
-
+    // We should consider the best available objective to avoid local minima.
     OneInterchange bestSwap = null;
     double bestObjective = Double.POSITIVE_INFINITY;
 
     // For each generated pair.
-    for (OneInterchange swap : customerPairs) {
-      // Check whether the current customer is in the tabu list.
-      boolean isPairTabu = false;
-      for (TabuItem tabuCustomer : shortTermMemory) {
-        if (Objects.equals(routes.get(swap.fromRouteIdx).get(swap.fromCustomerIdx),
-            tabuCustomer.customer)
-            || Objects.equals(routes.get(swap.toRouteIdx).get(swap.toCustomerIdx),
-            tabuCustomer.customer)) {
-          isPairTabu = true;
-          break;
+    for (int routeIdxFrom = 0; routeIdxFrom < routeList.routes.size(); routeIdxFrom++) {
+      for (int routeIdxTo = routeIdxFrom + 1; routeIdxTo < routeList.routes.size(); routeIdxTo++) {
+        Route route1 = routeList.routes.get(routeIdxFrom);
+        Route route2 = routeList.routes.get(routeIdxTo);
+        // Account for depots here.
+        for (int customerIdxFrom = 1; customerIdxFrom < route1.customers.size() - 1;
+            customerIdxFrom++) {
+          for (int customerIdxTo = 1; customerIdxTo < route2.customers.size() - 1;
+              customerIdxTo++) {
+            OneInterchange swap = new OneInterchange(InterchangeType.Swap, routeIdxFrom,
+                customerIdxFrom, routeIdxTo, customerIdxTo);
+            // Check whether the current customer is in the tabu list.
+            boolean isPairTabu = false;
+            for (TabuItem tabuCustomer : shortTermMemory) {
+              if (Objects.equals(
+                  routeList.routes.get(swap.fromRouteIdx).customers.get(swap.fromCustomerIdx),
+                  tabuCustomer.customer) || Objects.equals(
+                  routeList.routes.get(swap.toRouteIdx).customers.get(swap.toCustomerIdx),
+                  tabuCustomer.customer)) {
+                isPairTabu = true;
+                break;
+              }
+            }
+
+            if (isPairTabu) {
+              continue;
+            }
+
+            double newTotalLength =
+                routeList.totalLength + routeList.calculateEdgeDelta(swap, distances);
+            double excessCapacity = routeList.calculateExcessCapacity(swap, demandOfCustomer,
+                vehicleCapacity);
+
+            double newObjective =
+                newTotalLength + excessCapacity * excessCapacityPenaltyCoefficient;
+
+            // If we are better than what we have now.
+            if (newObjective < bestObjective) {
+              // Update the best values so far.
+              bestObjective = newObjective;
+              bestSwap = new OneInterchange(InterchangeType.Swap, swap.fromRouteIdx,
+                  swap.fromCustomerIdx, swap.toRouteIdx, swap.toCustomerIdx);
+            }
+          }
         }
-      }
-      if (isPairTabu) {
-        continue;
-      }
-
-      // Swap forward.
-      performSwap(swap.fromRouteIdx, swap.fromCustomerIdx, swap.toRouteIdx,
-          swap.toCustomerIdx);
-      double newObjective = calculateObjective();
-      // Swap back.
-      performSwap(swap.fromRouteIdx, swap.fromCustomerIdx, swap.toRouteIdx,
-          swap.toCustomerIdx);
-
-      // If we are better than what we have now.
-      if (newObjective < bestObjective) {
-        // Update the best values so far.
-        bestObjective = newObjective;
-        bestSwap = new OneInterchange(InterchangeType.Swap, newObjective,
-            swap.fromRouteIdx, swap.fromCustomerIdx, swap.toRouteIdx, swap.toCustomerIdx);
       }
     }
 
     return bestSwap;
   }
 
-  /**
-   * Calculates all pairs of customer indices, excluding those on the same route.
-   *
-   * @return all different-route pairs of customer indices.
-   */
-  private List<OneInterchange> getAllSwaps() {
-    List<OneInterchange> swaps = new ArrayList<>();
-    // Iterate through all routes.
-    for (int routeIdx1 = 0; routeIdx1 < routes.size(); routeIdx1++) {
-      for (int routeIdx2 = routeIdx1 + 1; routeIdx2 < routes.size(); routeIdx2++) {
-        List<Integer> route1 = routes.get(routeIdx1);
-        List<Integer> route2 = routes.get(routeIdx2);
-        // Account for depots here.
-        for (int customerIdx1 = 1; customerIdx1 < route1.size() - 1; customerIdx1++) {
-          for (int customerIdx2 = 1; customerIdx2 < route2.size() - 1; customerIdx2++) {
-            swaps.add(new OneInterchange(InterchangeType.Swap, 0,
-                routeIdx1, customerIdx1, routeIdx2, customerIdx2));
-          }
-        }
-      }
-    }
-
-    return swaps;
-  }
-
-  /**
-   * Swaps two customers.
-   *
-   * @param routeIdx1    route index of customer 1.
-   * @param customerIdx1 customer index of customer 1.
-   * @param routeIdx2    route index of customer 2.
-   * @param customerIdx2 customer index of customer 2.
-   */
-  private void performSwap(int routeIdx1, int customerIdx1, int routeIdx2, int customerIdx2) {
-    List<Integer> route1 = routes.get(routeIdx1);
-    List<Integer> route2 = routes.get(routeIdx2);
-
-    int temp = route1.get(customerIdx1);
-    route1.set(customerIdx1, route2.get(customerIdx2));
-    route2.set(customerIdx2, temp);
-  }
-
-  private double calculateObjective() {
-    return getTourLength(routes)
-        + calculateExcessCapacity(routes) * excessCapacityPenaltyCoefficient;
+  private double calculateObjective(double tourLength, double excessCapacity) {
+    return tourLength + excessCapacity * excessCapacityPenaltyCoefficient;
   }
 
   /**
    * For each vehicle's route, checks how much over capacity it is.
    *
-   * @param routes routes to calculate the excess capacity for.
+   * @param routeList routes to calculate the excess capacity for.
    * @return excess capacity.
    */
-  public double calculateExcessCapacity(List<List<Integer>> routes) {
+  public double calculateExcessCapacity(RouteList routeList) {
     double excessCapacity = 0;
     // for each vehicle
-    for (List<Integer> route : routes) {
-      double demand = 0;
-      // calculate capacity
-      for (int customer : route) {
-        demand += demandOfCustomer[customer];
-      }
+    for (Route route : routeList.routes) {
       // only if its over what it should be, add amount over
-      if (vehicleCapacity < demand) {
-        excessCapacity += demand - vehicleCapacity;
+      if (vehicleCapacity < route.totalCustomerDemand) {
+        excessCapacity += route.totalCustomerDemand - vehicleCapacity;
       }
     }
     return excessCapacity;
-  }
-
-  /**
-   * Perform a deep copy of the routes.
-   *
-   * @param routes routes to clone.
-   * @return deep copy of the routes.
-   */
-  public List<List<Integer>> cloneRoutes(List<List<Integer>> routes) {
-    List<List<Integer>> routesCopy = new ArrayList<>();
-
-    for (List<Integer> route : routes) {
-      routesCopy.add(new ArrayList<>(route));
-    }
-
-    return routesCopy;
   }
 
   /**
@@ -383,7 +303,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
    *
    * @return routes of the initial feasible solution.
    */
-  private List<List<Integer>> generateInitialSolution() {
+  private RouteList generateInitialSolution() {
     try (IloCplex bppModel = new IloCplex()) {
       bppModel.setOut(null);
       bppModel.setWarning(null);
@@ -410,8 +330,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
       for (int i = 0; i < numVehicles; i++) {
         IloLinearNumExpr totalLoad = bppModel.linearNumExpr();
         for (int j = 0; j < numCustomers - 1; j++) {
-          totalLoad.addTerm(customerVehicleAssignment[j][i],
-              demandOfCustomer[j + 1]);
+          totalLoad.addTerm(customerVehicleAssignment[j][i], demandOfCustomer[j + 1]);
         }
         IloLinearNumExpr maxLoad = bppModel.linearNumExpr();
         maxLoad.addTerm(vehicleCapacity, useVehicles[i]);
@@ -419,19 +338,32 @@ public class VRPInstanceIncomplete extends VRPInstance {
       }
 
       if (bppModel.solve()) {
-        List<List<Integer>> initialRoutes = new ArrayList<>();
+        List<Route> initialRoutes = new ArrayList<>();
+
         for (int i = 0; i < numVehicles; i++) {
           List<Integer> currentRoute = new ArrayList<>();
+          int currentRouteDemand = 0;
+
           currentRoute.add(0);
           for (int j = 0; j < numCustomers - 1; j++) {
             if (bppModel.getValue(customerVehicleAssignment[j][i]) == 1) {
               currentRoute.add(j + 1);
+              currentRouteDemand += demandOfCustomer[j + 1];
             }
           }
           currentRoute.add(0);
-          initialRoutes.add(currentRoute);
+          initialRoutes.add(new Route(currentRoute, currentRouteDemand));
         }
-        return initialRoutes;
+
+        double initialRoutesLength = 0;
+        for (Route route : initialRoutes) {
+          for (int customerIdx = 0; customerIdx < route.customers.size() - 1; customerIdx++) {
+            initialRoutesLength += distances[route.customers.get(customerIdx)][route.customers.get(
+                customerIdx + 1)];
+          }
+        }
+
+        return new RouteList(initialRoutes, initialRoutesLength);
       } else {
         throw new IllegalArgumentException("Infeasible BPP model.");
       }
@@ -439,4 +371,40 @@ public class VRPInstanceIncomplete extends VRPInstance {
       throw new RuntimeException(e);
     }
   }
+
+  // Serialize all routes into the required format.
+  public String serializeRoutes(RouteList routeList) {
+    // Add the vehicles that didn't go
+    int excessVehicles = numVehicles - routeList.routes.size();
+    for (int i = 0; i < excessVehicles; i++) {
+      ArrayList<Integer> excess = new ArrayList<>();
+      excess.add(0);
+      excess.add(0);
+      routeList.routes.add(new Route(excess, 0));
+    }
+
+    System.out.println("Routes: " + routeList.routes.size());
+    for (Route route : routeList.routes) {
+      for (int customer : route.customers) {
+        System.out.print(customer + " ");
+      }
+      System.out.println();
+    }
+
+    // convert to a string
+    List<Integer> flattenedList = new ArrayList<>();
+    flattenedList.add(0); // NOTE: 1 HERE IF PROVED OPTIMAL, ELSE 0
+
+    for (Route route : routeList.routes) {
+      flattenedList.addAll(route.customers);
+    }
+
+    StringBuilder sb = new StringBuilder();
+    for (Integer number : flattenedList) {
+      sb.append(number).append(" ");
+    }
+
+    return sb.toString().trim();
+  }
+
 }
