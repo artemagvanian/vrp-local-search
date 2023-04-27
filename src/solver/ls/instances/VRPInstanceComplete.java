@@ -1,4 +1,4 @@
-package solver.ls;
+package solver.ls.instances;
 
 import ilog.concert.IloException;
 import ilog.concert.IloLinearNumExpr;

@@ -1,4 +1,4 @@
-package solver.ls;
+package solver.ls.data;
 
 import java.util.List;
 

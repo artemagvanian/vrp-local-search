@@ -1,4 +1,4 @@
-package solver.ls;
+package solver.ls.instances;
 
 import java.io.File;
 import java.io.FileNotFoundException;

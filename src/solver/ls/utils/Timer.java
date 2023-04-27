@@ -1,8 +1,7 @@
-package solver.ls;
+package solver.ls.utils;
 
 public class Timer {
 
-  private final double nano = 1000000000.0;
   private long startTime;
   private long stopTime;
   private boolean running;
@@ -30,6 +29,7 @@ public class Timer {
 
   public double getTime() {
     double elapsed;
+    double nano = 1000000000.0;
     if (running) {
       elapsed = ((System.nanoTime() - startTime) / nano);
     } else {

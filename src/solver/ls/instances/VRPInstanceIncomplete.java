@@ -1,15 +1,17 @@
-package solver.ls;
+package solver.ls.instances;
 
 import ilog.concert.IloException;
 import ilog.concert.IloLinearNumExpr;
 import ilog.concert.IloNumVar;
 import ilog.cplex.IloCplex;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
+import solver.ls.data.Insertion;
+import solver.ls.data.Interchange;
+import solver.ls.data.Route;
+import solver.ls.data.RouteList;
+import solver.ls.data.TabuItem;
 
 public class VRPInstanceIncomplete extends VRPInstance {
 
@@ -28,7 +30,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
   /**
    * Memory list to keep the recently moved customers.
    */
-  private final Set<TabuItem> shortTermMemory;
+  private final List<TabuItem> shortTermMemory;
   /**
    * Random number generator for the instance.
    */
@@ -50,7 +52,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
    */
   private double excessCapacityPenaltyCoefficient = 1;
 
-  VRPInstanceIncomplete(String fileName, int maxIterations) {
+  public VRPInstanceIncomplete(String fileName, int maxIterations) {
     super(fileName);
     // Copy parameters.
     this.maxIterations = maxIterations;
@@ -61,7 +63,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
     routeList = generateInitialSolution();
     incumbent = routeList.clone();
     objective = calculateObjective(incumbent.length, 0);
-    shortTermMemory = new HashSet<>();
+    shortTermMemory = new ArrayList<>();
     rand = new Random();
     // Objective of the initial solution.
     System.out.println("Initial objective: " + objective);
@@ -271,8 +273,13 @@ public class VRPInstanceIncomplete extends VRPInstance {
   }
 
   private boolean isCustomerTabu(int routeIdx, int customerIdx) {
-    TabuItem customer = new TabuItem(routeList.routes.get(routeIdx).customers.get(customerIdx), 0);
-    return shortTermMemory.contains(customer);
+    int customer = routeList.routes.get(routeIdx).customers.get(customerIdx);
+    for (TabuItem item : shortTermMemory) {
+      if (item.customer == customer) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private double calculateObjective(double tourLength, double excessCapacity) {
@@ -337,10 +344,11 @@ public class VRPInstanceIncomplete extends VRPInstance {
       }
 
       if (bppModel.solve()) {
-        LinkedList<Route> initialRoutes = new LinkedList<>();
+        List<Route> initialRoutes = new ArrayList<>();
+        double initialRoutesLength = 0;
 
         for (int i = 0; i < numVehicles; i++) {
-          LinkedList<Integer> currentRoute = new LinkedList<>();
+          List<Integer> currentRoute = new ArrayList<>();
           int currentRouteDemand = 0;
           double currentRouteLength = 0;
 
@@ -358,12 +366,8 @@ public class VRPInstanceIncomplete extends VRPInstance {
                 customerIdx + 1)];
           }
 
-          initialRoutes.add(new Route(currentRoute, currentRouteDemand, currentRouteLength));
-        }
-
-        double initialRoutesLength = 0;
-        for (Route route : initialRoutes) {
-          initialRoutesLength += route.length;
+          initialRoutes.add(new Route(currentRoute, currentRouteDemand));
+          initialRoutesLength += currentRouteLength;
         }
 
         return new RouteList(initialRoutes, initialRoutesLength);
@@ -380,10 +384,10 @@ public class VRPInstanceIncomplete extends VRPInstance {
     // Add the vehicles that didn't go
     int excessVehicles = numVehicles - routeList.routes.size();
     for (int i = 0; i < excessVehicles; i++) {
-      LinkedList<Integer> excess = new LinkedList<>();
+      List<Integer> excess = new ArrayList<>();
       excess.add(0);
       excess.add(0);
-      routeList.routes.add(new Route(excess, 0, 0));
+      routeList.routes.add(new Route(excess, 0));
     }
 
     System.out.println("Routes: " + routeList.routes.size());

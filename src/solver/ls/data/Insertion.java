@@ -1,4 +1,4 @@
-package solver.ls;
+package solver.ls.data;
 
 public class Insertion {
 
