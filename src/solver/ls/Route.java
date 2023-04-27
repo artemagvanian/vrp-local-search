@@ -1,22 +1,22 @@
 package solver.ls;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedList;
 
 public class Route implements Cloneable {
 
-  public List<Integer> customers;
-  public int totalCustomerDemand;
+  public LinkedList<Integer> customers;
+  public int demand;
+  public double length;
 
-  public Route(List<Integer> customers, int totalCustomerDemand) {
+  public Route(LinkedList<Integer> customers, int demand, double length) {
     this.customers = customers;
-    this.totalCustomerDemand = totalCustomerDemand;
+    this.demand = demand;
+    this.length = length;
   }
 
   @Override
   public String toString() {
-    return "Route{" + "customers=" + customers + ", totalCustomerDemand=" + totalCustomerDemand
-        + '}';
+    return "Route{" + "customers=" + customers + ", demand=" + demand + ", length=" + length + '}';
   }
 
   public Route clone() {
@@ -26,7 +26,7 @@ public class Route implements Cloneable {
     } catch (CloneNotSupportedException e) {
       throw new RuntimeException(e);
     }
-    newRoute.customers = new ArrayList<>(customers);
+    newRoute.customers = new LinkedList<>(customers);
     return newRoute;
   }
 }

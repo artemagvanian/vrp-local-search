@@ -66,7 +66,7 @@ public class Main {
 
     // Generate the solution files.
     String instanceHeader =
-        String.format("%.2f", incompleteInstance.incumbent.totalLength) + " 0\n";
+        String.format("%.2f", incompleteInstance.incumbent.length) + " 0\n";
     BufferedWriter writer = new BufferedWriter(new FileWriter("./solutions/" + filename + ".sol"));
     writer.write(instanceHeader);
     // Serialize routes one-by-one.
@@ -81,7 +81,7 @@ public class Main {
     // Output the instance string.
     System.out.println(
         "{\"Instance\": \"" + filename + "\", \"Time\": " + String.format("%.2f", watch.getTime())
-            + ", \"Result\": " + String.format("%.2f", incompleteInstance.incumbent.totalLength)
+            + ", \"Result\": " + String.format("%.2f", incompleteInstance.incumbent.length)
             + ", \"Solution\": \"" + incompleteInstance.serializeRoutes(
             incompleteInstance.incumbent) + "\"}");
   }

@@ -1,21 +1,22 @@
 package solver.ls;
 
-import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
 
 public class RouteList implements Cloneable {
 
-  public List<Route> routes;
-  public double totalLength;
+  public LinkedList<Route> routes;
+  public double length;
 
-  public RouteList(List<Route> routes, double totalLength) {
+  public RouteList(LinkedList<Route> routes, double length) {
     this.routes = routes;
-    this.totalLength = totalLength;
+    this.length = length;
   }
 
   @Override
   public String toString() {
-    return "RouteList{" + "routes=" + routes + ", totalLength=" + totalLength + '}';
+    return "RouteList{" + "routes=" + routes + ", length=" + length + '}';
   }
 
   public RouteList clone() {
@@ -25,7 +26,7 @@ public class RouteList implements Cloneable {
     } catch (CloneNotSupportedException e) {
       throw new RuntimeException(e);
     }
-    clonedRoutes.routes = new ArrayList<>();
+    clonedRoutes.routes = new LinkedList<>();
 
     for (Route route : routes) {
       clonedRoutes.routes.add(route.clone());
@@ -34,96 +35,54 @@ public class RouteList implements Cloneable {
     return clonedRoutes;
   }
 
-  public double calculateEdgeDelta(OneInterchange interchange, double[][] distances) {
-    if (interchange.type == InterchangeType.Swap) {
-      int customer1 = routes.get(interchange.fromRouteIdx).customers.get(
-          interchange.fromCustomerIdx);
-      int customer1LeftNeighbor = routes.get(interchange.fromRouteIdx).customers.get(
-          interchange.fromCustomerIdx - 1);
-      int customer1RightNeighbor = routes.get(interchange.fromRouteIdx).customers.get(
-          interchange.fromCustomerIdx + 1);
+  public double calculateEdgeDelta(Interchange interchange, double[][] distances) {
+    Route clonedRoute1 = routes.get(interchange.routeIdx1).clone();
+    Route clonedRoute2 = routes.get(interchange.routeIdx2).clone();
 
-      int customer2 = routes.get(interchange.toRouteIdx).customers.get(interchange.toCustomerIdx);
-      int customer2LeftNeighbor = routes.get(interchange.toRouteIdx).customers.get(
-          interchange.toCustomerIdx - 1);
-      int customer2RightNeighbor = routes.get(interchange.toRouteIdx).customers.get(
-          interchange.toCustomerIdx + 1);
+    performRawInterchange(clonedRoute1, clonedRoute2, interchange.insertionList1,
+        interchange.insertionList2);
+    double newRoute1Length = calculateRouteLength(clonedRoute1, distances);
+    double newRoute2Length = calculateRouteLength(clonedRoute2, distances);
 
-      double edgePositiveDelta =
-          distances[customer1][customer2LeftNeighbor] + distances[customer1][customer2RightNeighbor]
-              + distances[customer2][customer1LeftNeighbor]
-              + distances[customer2][customer1RightNeighbor];
-
-      double edgeNegativeDelta =
-          distances[customer1][customer1LeftNeighbor] + distances[customer1][customer1RightNeighbor]
-              + distances[customer2][customer2LeftNeighbor]
-              + distances[customer2][customer2RightNeighbor];
-
-      return edgePositiveDelta - edgeNegativeDelta;
-    } else if (interchange.type == InterchangeType.Insertion) {
-      int customer = routes.get(interchange.fromRouteIdx).customers.get(
-          interchange.fromCustomerIdx);
-      int currentLeftNeighbor = routes.get(interchange.fromRouteIdx).customers.get(
-          interchange.fromCustomerIdx - 1);
-      int currentRightNeighbor = routes.get(interchange.fromRouteIdx).customers.get(
-          interchange.fromCustomerIdx + 1);
-
-      int futureLeftNeighbor = routes.get(interchange.toRouteIdx).customers.get(
-          interchange.toCustomerIdx - 1);
-      int futureRightNeighbor = routes.get(interchange.toRouteIdx).customers.get(
-          interchange.toCustomerIdx);
-
-      double edgePositiveDelta =
-          distances[customer][futureLeftNeighbor] + distances[customer][futureRightNeighbor]
-              + distances[currentLeftNeighbor][currentRightNeighbor];
-
-      double edgeNegativeDelta =
-          distances[customer][currentLeftNeighbor] + distances[customer][currentRightNeighbor]
-              + distances[futureLeftNeighbor][futureRightNeighbor];
-
-      return edgePositiveDelta - edgeNegativeDelta;
-    }
-    throw new IllegalStateException("Should not have been here.");
+    return newRoute1Length - clonedRoute1.length + newRoute2Length - clonedRoute2.length;
   }
 
-  public int calculateExcessCapacity(OneInterchange interchange, int[] demandOfCustomer,
+  private double calculateRouteLength(Route route, double[][] distances) {
+    double routeLength = 0;
+    for (int i = 0; i < route.customers.size() - 1; i++) {
+      routeLength += distances[route.customers.get(i)][route.customers.get(i + 1)];
+    }
+    return routeLength;
+  }
+
+  public int calculateExcessCapacity(Interchange interchange, int[] demandOfCustomer,
       int vehicleCapacity) {
-    int newCustomerDemandFrom, newCustomerDemandTo;
+    Route route1 = routes.get(interchange.routeIdx1);
+    Route route2 = routes.get(interchange.routeIdx2);
 
-    if (interchange.type == InterchangeType.Swap) {
-      int customer1 = routes.get(interchange.fromRouteIdx).customers.get(
-          interchange.fromCustomerIdx);
-      int customer2 = routes.get(interchange.toRouteIdx).customers.get(interchange.toCustomerIdx);
+    int newCustomerDemandRoute1 = route1.demand;
+    int newCustomerDemandRoute2 = route2.demand;
 
-      // Swap demand between routes.
-      newCustomerDemandFrom =
-          routes.get(interchange.fromRouteIdx).totalCustomerDemand + demandOfCustomer[customer2]
-              - demandOfCustomer[customer1];
-      newCustomerDemandTo =
-          routes.get(interchange.toRouteIdx).totalCustomerDemand + demandOfCustomer[customer1]
-              - demandOfCustomer[customer2];
-    } else if (interchange.type == InterchangeType.Insertion) {
-      int customer = routes.get(interchange.fromRouteIdx).customers.get(
-          interchange.fromCustomerIdx);
-      // Remove demand from one route and add it to the other one.
-      newCustomerDemandFrom =
-          routes.get(interchange.fromRouteIdx).totalCustomerDemand - demandOfCustomer[customer];
-      newCustomerDemandTo =
-          routes.get(interchange.toRouteIdx).totalCustomerDemand + demandOfCustomer[customer];
-    } else {
-      throw new IllegalStateException("Should not have been here.");
+    for (Insertion insertion : interchange.insertionList1) {
+      newCustomerDemandRoute1 -= demandOfCustomer[route1.customers.get(insertion.fromCustomerIdx)];
+      newCustomerDemandRoute2 += demandOfCustomer[route1.customers.get(insertion.fromCustomerIdx)];
+    }
+
+    for (Insertion insertion : interchange.insertionList2) {
+      newCustomerDemandRoute2 -= demandOfCustomer[route2.customers.get(insertion.fromCustomerIdx)];
+      newCustomerDemandRoute1 += demandOfCustomer[route2.customers.get(insertion.fromCustomerIdx)];
     }
 
     int excessCapacity = 0;
     // for each vehicle
     for (int routeIdx = 0; routeIdx < routes.size(); routeIdx++) {
       int currentCustomerDemand;
-      if (routeIdx == interchange.fromRouteIdx) {
-        currentCustomerDemand = newCustomerDemandFrom;
-      } else if (routeIdx == interchange.toRouteIdx) {
-        currentCustomerDemand = newCustomerDemandTo;
+      if (routeIdx == interchange.routeIdx1) {
+        currentCustomerDemand = newCustomerDemandRoute1;
+      } else if (routeIdx == interchange.routeIdx2) {
+        currentCustomerDemand = newCustomerDemandRoute2;
       } else {
-        currentCustomerDemand = routes.get(routeIdx).totalCustomerDemand;
+        currentCustomerDemand = routes.get(routeIdx).demand;
       }
       // only if its over what it should be, add amount over
       if (vehicleCapacity < currentCustomerDemand) {
@@ -134,36 +93,60 @@ public class RouteList implements Cloneable {
     return excessCapacity;
   }
 
-  public void perform(OneInterchange interchange, double[][] distances, int[] demandOfCustomer) {
-    totalLength += calculateEdgeDelta(interchange, distances);
+  public void perform(Interchange interchange, double[][] distances, int[] demandOfCustomer) {
+    length += calculateEdgeDelta(interchange, distances);
 
-    Route routeFrom = routes.get(interchange.fromRouteIdx);
-    Route routeTo = routes.get(interchange.toRouteIdx);
+    Route route1 = routes.get(interchange.routeIdx1);
+    Route route2 = routes.get(interchange.routeIdx2);
 
-    if (interchange.type == InterchangeType.Swap) {
-      // Update customer demands for the routes.
-      routeFrom.totalCustomerDemand +=
-          demandOfCustomer[routeTo.customers.get(interchange.toCustomerIdx)]
-              - demandOfCustomer[routeFrom.customers.get(interchange.fromCustomerIdx)];
-      routeTo.totalCustomerDemand +=
-          demandOfCustomer[routeFrom.customers.get(interchange.fromCustomerIdx)]
-              - demandOfCustomer[routeTo.customers.get(interchange.toCustomerIdx)];
-      // Perform the swap.
-      int temp = routeFrom.customers.get(interchange.fromCustomerIdx);
-      routeFrom.customers.set(interchange.fromCustomerIdx,
-          routeTo.customers.get(interchange.toCustomerIdx));
-      routeTo.customers.set(interchange.toCustomerIdx, temp);
-    } else if (interchange.type == InterchangeType.Insertion) {
-      // Update customer demands for the routes.
-      routeFrom.totalCustomerDemand -= demandOfCustomer[routeFrom.customers.get(
-          interchange.fromCustomerIdx)];
-      routeTo.totalCustomerDemand += demandOfCustomer[routeFrom.customers.get(
-          interchange.fromCustomerIdx)];
-      // Perform the insertion of the original coordinate into the new spot.
-      routes.get(interchange.toRouteIdx).customers.add(interchange.toCustomerIdx,
-          routes.get(interchange.fromRouteIdx).customers.get(interchange.fromCustomerIdx));
-      // Remove the original value.
-      routes.get(interchange.fromRouteIdx).customers.remove(interchange.fromCustomerIdx);
+    // Update customer demands for the routes.
+    for (Insertion insertion : interchange.insertionList1) {
+      route1.demand -= demandOfCustomer[route1.customers.get(insertion.fromCustomerIdx)];
+      route2.demand += demandOfCustomer[route1.customers.get(insertion.fromCustomerIdx)];
     }
+
+    for (Insertion insertion : interchange.insertionList2) {
+      route2.demand -= demandOfCustomer[route2.customers.get(insertion.fromCustomerIdx)];
+      route1.demand += demandOfCustomer[route2.customers.get(insertion.fromCustomerIdx)];
+    }
+
+    performRawInterchange(route1, route2, interchange.insertionList1, interchange.insertionList2);
+
+    route1.length = calculateRouteLength(route1, distances);
+    route2.length = calculateRouteLength(route2, distances);
+  }
+
+  private void performRawInterchange(Route route1, Route route2, List<Insertion> insertionList1,
+      List<Insertion> insertionList2) {
+
+    LinkedList<RemovedCustomer> movedCustomers1 = new LinkedList<>();
+    LinkedList<RemovedCustomer> movedCustomers2 = new LinkedList<>();
+
+    // Sort in the decreasing order by fromCustomerIdx.
+    insertionList1.sort((ins1, ins2) -> ins2.fromCustomerIdx - ins1.fromCustomerIdx);
+    for (Insertion insertion : insertionList1) {
+      movedCustomers1.add(
+          new RemovedCustomer(route1.customers.remove(insertion.fromCustomerIdx), insertion));
+    }
+
+    // Sort in the decreasing order by fromCustomerIdx.
+    insertionList2.sort((ins1, ins2) -> ins2.fromCustomerIdx - ins1.fromCustomerIdx);
+    for (Insertion insertion : insertionList2) {
+      movedCustomers2.add(
+          new RemovedCustomer(route2.customers.remove(insertion.fromCustomerIdx), insertion));
+    }
+
+    // Sort in the increasing order by toCustomerIdx.
+    movedCustomers1.sort(Comparator.comparingInt(ins -> ins.insertion.toCustomerIdx));
+    for (RemovedCustomer removedCustomer : movedCustomers1) {
+      route2.customers.add(removedCustomer.insertion.toCustomerIdx, removedCustomer.customer);
+    }
+
+    // Sort in the increasing order by toCustomerIdx.
+    movedCustomers2.sort(Comparator.comparingInt(ins -> ins.insertion.toCustomerIdx));
+    for (RemovedCustomer removedCustomer : movedCustomers2) {
+      route1.customers.add(removedCustomer.insertion.toCustomerIdx, removedCustomer.customer);
+    }
+
   }
 }
