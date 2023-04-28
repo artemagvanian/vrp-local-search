@@ -1,13 +1,12 @@
 package solver.ls;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import solver.ls.data.Route;
 import solver.ls.instances.VRPInstanceIncomplete;
 import solver.ls.utils.Timer;
+import java.util.Scanner;
 // import java.util.stream.IntStream;
 
 public class Main {
@@ -27,7 +26,7 @@ public class Main {
 
     Timer watch = new Timer();
     watch.start();
-    VRPInstanceIncomplete incompleteInstance = new VRPInstanceIncomplete(input, maxIterations);
+    VRPInstanceIncomplete incompleteInstance = new VRPInstanceIncomplete(input, maxIterations, watch);
     watch.stop();
 
     /*
@@ -61,25 +60,40 @@ public class Main {
     System.out.println("*************");
      */
 
+    double amtOverCapacity = incompleteInstance.calculateExcessCapacity(
+            incompleteInstance.incumbent);
+
     System.out.println(
-        "Amount over capacity (expect it to be 0): " + incompleteInstance.calculateExcessCapacity(
-            incompleteInstance.incumbent));
+        "Amount over capacity (expect it to be 0): " + amtOverCapacity);
     System.out.println("Average time per iteration (µs): " + String.format("%.2f",
         Math.pow(10, 6) * watch.getTime() / maxIterations));
 
     // Generate the solution files.
-    String instanceHeader =
-        String.format("%.2f", incompleteInstance.incumbent.length) + " 0\n";
-    BufferedWriter writer = new BufferedWriter(new FileWriter("./solutions/" + filename + ".sol"));
-    writer.write(instanceHeader);
-    // Serialize routes one-by-one.
-    for (Route route : incompleteInstance.incumbent.routes) {
-      for (Integer customer : route.customers) {
-        writer.write(customer + " ");
-      }
-      writer.write("\n");
+    // only replace the current one if the new solution is better
+    Scanner read = null;
+    String fullFileName = "./solutions/" + filename + ".sol";
+    double currentBest = Double.MAX_VALUE;
+
+    try {
+      read = new Scanner(new File(fullFileName));
+      currentBest = read.nextDouble();
+    } catch (FileNotFoundException ignored) {
     }
-    writer.close();
+
+    if (incompleteInstance.incumbent.length < currentBest && amtOverCapacity == 0) {
+      String instanceHeader =
+              String.format("%.2f", incompleteInstance.incumbent.length) + " 0\n";
+      BufferedWriter writer = new BufferedWriter(new FileWriter(fullFileName));
+      writer.write(instanceHeader);
+      // Serialize routes one-by-one.
+      for (Route route : incompleteInstance.incumbent.routes) {
+        for (Integer customer : route.customers) {
+          writer.write(customer + " ");
+        }
+        writer.write("\n");
+      }
+      writer.close();
+    }
 
     // Output the instance string.
     System.out.println(

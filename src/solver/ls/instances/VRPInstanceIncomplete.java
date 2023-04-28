@@ -7,6 +7,8 @@ import ilog.cplex.IloCplex;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import solver.ls.utils.Timer;
+
 import solver.ls.data.Insertion;
 import solver.ls.data.Interchange;
 import solver.ls.data.Route;
@@ -47,15 +49,18 @@ public class VRPInstanceIncomplete extends VRPInstance {
    * Current best objective, calculated as specified by the objective function.
    */
   private double objective;
+
+  private Timer watch;
   /**
    * Initial penalty coefficient for the objective function.
    */
   private double excessCapacityPenaltyCoefficient = 1;
 
-  public VRPInstanceIncomplete(String fileName, int maxIterations) {
+  public VRPInstanceIncomplete(String fileName, int maxIterations, Timer watch) {
     super(fileName);
     // Copy parameters.
     this.maxIterations = maxIterations;
+    this.watch = watch;
     // Set tabu tenure limits
     int constantTabu = 1; // optimal based on testing
     this.minimumTabuTenure = constantTabu;
@@ -81,13 +86,14 @@ public class VRPInstanceIncomplete extends VRPInstance {
     Interchange bestSwap;
 
     int currentIteration = 0;
+    boolean firstBestFirst = false; // hyperparameter
 
     // Keep going for a fixed number of iterations.
-    while (currentIteration < maxIterations) {
+    while (currentIteration < maxIterations && watch.getTime() < 297.0) {
       currentIteration++;
       // Calculate both best insertion and best swap.
-      bestInsertion = findBestInsertion();
-      bestSwap = findBestSwap();
+      bestInsertion = findBestInsertion(firstBestFirst);
+      bestSwap = findBestSwap(firstBestFirst);
 
       double insertionObjective = bestInsertion == null ? Double.POSITIVE_INFINITY
           : calculateObjective(
@@ -148,6 +154,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
       System.out.println("Current objective: " + objective);
       System.out.println("Penalty Coefficient: " + excessCapacityPenaltyCoefficient);
       System.out.println("Short-term memory: " + shortTermMemory);
+      System.out.println("WATCH: " + watch.getTime());
     }
   }
 
@@ -156,7 +163,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
    *
    * @return best possible insertion from the current routes.
    */
-  private Interchange findBestInsertion() {
+  private Interchange findBestInsertion(boolean fbf) {
     // We should consider the best available objective to avoid local minima.
     Interchange bestInterchange = null;
     double bestObjective = Double.POSITIVE_INFINITY;
@@ -194,6 +201,10 @@ public class VRPInstanceIncomplete extends VRPInstance {
               // Save the best place to insert this customer so far.
               bestInterchange = interchange;
               bestObjective = newObjective;
+
+              if (fbf) {
+                return bestInterchange;
+              }
             }
           }
         }
@@ -217,7 +228,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
    *
    * @return best possible swap from the current routes
    */
-  private Interchange findBestSwap() {
+  private Interchange findBestSwap(boolean fbf) {
     // We should consider the best available objective to avoid local minima.
     Interchange bestInterchange = null;
     double bestObjective = Double.POSITIVE_INFINITY;
@@ -262,6 +273,9 @@ public class VRPInstanceIncomplete extends VRPInstance {
                   // Update the best values so far.
                   bestObjective = newObjective;
                   bestInterchange = interchange;
+                  if (fbf) {
+                    return bestInterchange;
+                  }
                 }
               }
             }
