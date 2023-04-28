@@ -57,8 +57,9 @@ public class VRPInstanceIncomplete extends VRPInstance {
     // Copy parameters.
     this.maxIterations = maxIterations;
     // Set tabu tenure limits
-    this.minimumTabuTenure = 5;
-    this.maximumTabuTenure = 5;
+    int constantTabu = 1; // optimal based on testing
+    this.minimumTabuTenure = constantTabu;
+    this.maximumTabuTenure = constantTabu;
     // Generate the initial solution, initialize variables.
     routeList = generateInitialSolution();
     incumbent = routeList.clone();
