@@ -254,8 +254,8 @@ public class VRPInstanceIncomplete extends VRPInstance {
                 customer1IdxTo++) {
               for (int customer2IdxTo = 1; customer2IdxTo < route1.customers.size() - 1;
                   customer2IdxTo++) {
-                Insertion insertion1 = new Insertion(customer1IdxFrom, customer2IdxFrom);
-                Insertion insertion2 = new Insertion(customer2IdxFrom, customer1IdxFrom);
+                Insertion insertion1 = new Insertion(customer1IdxFrom, customer1IdxTo);
+                Insertion insertion2 = new Insertion(customer2IdxFrom, customer2IdxTo);
                 Interchange interchange = new Interchange(routeIdx1,
                     new ArrayList<>(List.of(insertion1)), routeIdx2,
                     new ArrayList<>(List.of(insertion2)));

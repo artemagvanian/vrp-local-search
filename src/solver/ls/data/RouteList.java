@@ -42,34 +42,63 @@ public class RouteList implements Cloneable {
     if (interchange.insertionList1.size() == 1 && interchange.insertionList2.size() == 0) {
       Insertion insertion = interchange.insertionList1.get(0);
       // Insertion delta.
-      return getInsertionDelta(distances, route1, route2, insertion);
+      return calculateInsertionDelta(distances, route1, route2, insertion);
     } else if (interchange.insertionList1.size() == 1 && interchange.insertionList2.size() == 1) {
-      Insertion insertion1 = interchange.insertionList1.get(0);
-      Insertion insertion2 = interchange.insertionList2.get(0);
-      if (insertion1.fromCustomerIdx == insertion2.toCustomerIdx
-          && insertion1.toCustomerIdx == insertion2.fromCustomerIdx) {
-        // Perfect swap.
-        return getSwapDelta(distances, route1, route2, insertion1, insertion2);
-      } else if (insertion1.fromCustomerIdx == insertion2.toCustomerIdx) {
-        // Half-swap.
-        return getHalfSwapDelta(distances, route1, route2, insertion1, insertion2);
-      } else if (insertion1.toCustomerIdx == insertion2.fromCustomerIdx) {
-        // Half-swap.
-        return getHalfSwapDelta(distances, route2, route1, insertion2, insertion1);
-      } else {
-        // Two independent insertions.
-        return calculateEdgeDelta(
-            new Interchange(interchange.routeIdx1, new ArrayList<>(List.of(insertion1)),
-                interchange.routeIdx2, new ArrayList<>(List.of())), distances) + calculateEdgeDelta(
-            new Interchange(interchange.routeIdx1, new ArrayList<>(List.of(insertion2)),
-                interchange.routeIdx2, new ArrayList<>(List.of())), distances);
-      }
+      return calculateSwapDelta(interchange, distances, route1, route2);
     } else {
       throw new IllegalArgumentException("Can only process 1-interchanges.");
     }
   }
 
-  private double getInsertionDelta(double[][] distances, Route route1, Route route2,
+  private double calculateSwapDelta(Interchange interchange, double[][] distances,
+      Route route1, Route route2) {
+    Insertion insertion1 = interchange.insertionList1.get(0);
+    Insertion insertion2 = interchange.insertionList2.get(0);
+
+    int customer1 = route1.customers.get(insertion1.fromCustomerIdx);
+    int customer1LeftNeighbor = route1.customers.get(insertion1.fromCustomerIdx - 1);
+    int customer1RightNeighbor = route1.customers.get(insertion1.fromCustomerIdx + 1);
+
+    int customer2 = route2.customers.get(insertion2.fromCustomerIdx);
+    int customer2LeftNeighbor = route2.customers.get(insertion2.fromCustomerIdx - 1);
+    int customer2RightNeighbor = route2.customers.get(insertion2.fromCustomerIdx + 1);
+
+    double extractionDelta =
+        distances[customer1LeftNeighbor][customer1RightNeighbor]
+            - distances[customer1LeftNeighbor][customer1]
+            - distances[customer1RightNeighbor][customer1]
+            + distances[customer2LeftNeighbor][customer2RightNeighbor]
+            - distances[customer2LeftNeighbor][customer2]
+            - distances[customer2RightNeighbor][customer2];
+
+    int customer1FutureLeftNeighbor = route2.customers.get(
+        insertion1.toCustomerIdx <= insertion2.fromCustomerIdx ? insertion1.toCustomerIdx - 1
+            : insertion1.toCustomerIdx);
+
+    int customer1FutureRightNeighbor = route2.customers.get(
+        insertion1.toCustomerIdx < insertion2.fromCustomerIdx ? insertion1.toCustomerIdx
+            : insertion1.toCustomerIdx + 1);
+
+    int customer2FutureLeftNeighbor = route1.customers.get(
+        insertion2.toCustomerIdx <= insertion1.fromCustomerIdx ? insertion2.toCustomerIdx - 1
+            : insertion2.toCustomerIdx);
+
+    int customer2FutureRightNeighbor = route1.customers.get(
+        insertion2.toCustomerIdx < insertion1.fromCustomerIdx ? insertion2.toCustomerIdx
+            : insertion2.toCustomerIdx + 1);
+
+    double insertionDelta =
+        -distances[customer1FutureLeftNeighbor][customer1FutureRightNeighbor]
+            + distances[customer1FutureLeftNeighbor][customer1]
+            + distances[customer1FutureRightNeighbor][customer1]
+            - distances[customer2FutureLeftNeighbor][customer2FutureRightNeighbor]
+            + distances[customer2FutureLeftNeighbor][customer2]
+            + distances[customer2FutureRightNeighbor][customer2];
+
+    return extractionDelta + insertionDelta;
+  }
+
+  private double calculateInsertionDelta(double[][] distances, Route route1, Route route2,
       Insertion insertion) {
     int customer = route1.customers.get(insertion.fromCustomerIdx);
     int currentLeftNeighbor = route1.customers.get(insertion.fromCustomerIdx - 1);
@@ -87,62 +116,6 @@ public class RouteList implements Cloneable {
             + distances[futureLeftNeighbor][futureRightNeighbor];
 
     return edgePositiveDelta - edgeNegativeDelta;
-  }
-
-  private double getSwapDelta(double[][] distances, Route route1, Route route2,
-      Insertion insertion1, Insertion insertion2) {
-    int customer1 = route1.customers.get(insertion1.fromCustomerIdx);
-    int customer1LeftNeighbor = route1.customers.get(insertion1.fromCustomerIdx - 1);
-    int customer1RightNeighbor = route1.customers.get(insertion1.fromCustomerIdx + 1);
-
-    int customer2 = route2.customers.get(insertion2.fromCustomerIdx);
-    int customer2LeftNeighbor = route2.customers.get(insertion2.fromCustomerIdx - 1);
-    int customer2RightNeighbor = route2.customers.get(insertion2.fromCustomerIdx + 1);
-
-    double edgePositiveDelta =
-        distances[customer1][customer2LeftNeighbor] + distances[customer1][customer2RightNeighbor]
-            + distances[customer2][customer1LeftNeighbor]
-            + distances[customer2][customer1RightNeighbor];
-
-    double edgeNegativeDelta =
-        distances[customer1][customer1LeftNeighbor] + distances[customer1][customer1RightNeighbor]
-            + distances[customer2][customer2LeftNeighbor]
-            + distances[customer2][customer2RightNeighbor];
-
-    return edgePositiveDelta - edgeNegativeDelta;
-  }
-
-  private double getHalfSwapDelta(double[][] distances, Route route1, Route route2,
-      Insertion insertion1, Insertion insertion2) {
-    int customer1 = route1.customers.get(insertion1.fromCustomerIdx);
-    int customer1LeftNeighbor = route1.customers.get(insertion1.fromCustomerIdx - 1);
-    int customer1RightNeighbor = route1.customers.get(insertion1.fromCustomerIdx + 1);
-
-    int customer2 = route2.customers.get(insertion2.fromCustomerIdx);
-    int customer2LeftNeighbor = route2.customers.get(insertion2.fromCustomerIdx - 1);
-    int customer2RightNeighbor = route2.customers.get(insertion2.fromCustomerIdx + 1);
-
-    int futureLeftNeighbor = route2.customers.get(insertion1.toCustomerIdx - 1);
-    int futureRightNeighbor = route2.customers.get(insertion1.toCustomerIdx);
-
-    double edgePositiveDelta =
-        distances[customer2][customer1LeftNeighbor] + distances[customer2][customer1RightNeighbor]
-            + distances[customer1][futureLeftNeighbor] + distances[customer1][futureRightNeighbor]
-            + distances[customer2LeftNeighbor][customer2RightNeighbor];
-
-    double edgeNegativeDelta = distances[futureLeftNeighbor][futureRightNeighbor]
-        + distances[customer1][customer1RightNeighbor]
-        + distances[customer1][customer1RightNeighbor];
-
-    return edgePositiveDelta - edgeNegativeDelta;
-  }
-
-  private double calculateRouteLength(Route route, double[][] distances) {
-    double routeLength = 0;
-    for (int i = 0; i < route.customers.size() - 1; i++) {
-      routeLength += distances[route.customers.get(i)][route.customers.get(i + 1)];
-    }
-    return routeLength;
   }
 
   public int calculateExcessCapacity(Interchange interchange, int[] demandOfCustomer,
