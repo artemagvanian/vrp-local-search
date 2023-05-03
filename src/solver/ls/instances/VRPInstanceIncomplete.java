@@ -60,12 +60,20 @@ public class VRPInstanceIncomplete extends VRPInstance {
     this.maxIterations = maxIterations;
     this.watch = watch;
     // Set tabu tenure limits
-    int constantTabu = 3;
+    int constantTabu = 5;
     int delta = 2;
     this.minimumTabuTenure = constantTabu - delta;
     this.maximumTabuTenure = constantTabu + delta;
     // Generate the initial solution, initialize variables.
     routeList = generateInitialSolution();
+
+    // Optimize routes.
+    double newRoutesLength = 0;
+    for (Route route : routeList.routes) {
+      newRoutesLength += route.optimize(distances);
+    }
+    routeList.length = newRoutesLength;
+
     incumbent = routeList.clone();
     objective = calculateObjective(incumbent.length, 0);
     shortTermMemory = new ArrayList<>();
@@ -102,6 +110,9 @@ public class VRPInstanceIncomplete extends VRPInstance {
           : calculateObjective(routeList.length + routeList.calculateEdgeDelta(bestSwap, distances),
               routeList.calculateExcessCapacity(bestSwap, demandOfCustomer, vehicleCapacity));
 
+      int routeIdx1 = 0;
+      int routeIdx2 = 0;
+
       // Only perform an action if either of the interchanges is not null.
       if (bestInsertion != null || bestSwap != null) {
         // If current best insertion is better.
@@ -114,6 +125,8 @@ public class VRPInstanceIncomplete extends VRPInstance {
               routeList.routes.get(bestInsertion.routeIdx1).customers.get(
                   bestInsertion.insertionList1.get(0).fromCustomerIdx),
               currentIteration + getRandomTabuTenure()));
+          routeIdx1 = bestInsertion.routeIdx1;
+          routeIdx2 = bestInsertion.routeIdx2;
           routeList.perform(bestInsertion, distances, demandOfCustomer);
         } else { // If current best swap is better.
           System.out.println("Performing action: " + bestSwap);
@@ -126,6 +139,8 @@ public class VRPInstanceIncomplete extends VRPInstance {
           shortTermMemory.add(new TabuItem(routeList.routes.get(bestSwap.routeIdx2).customers.get(
               bestSwap.insertionList2.get(0).fromCustomerIdx),
               currentIteration + getRandomTabuTenure()));
+          routeIdx1 = bestSwap.routeIdx1;
+          routeIdx2 = bestSwap.routeIdx2;
           // Perform the actual swap.
           routeList.perform(bestSwap, distances, demandOfCustomer);
         }
@@ -137,10 +152,15 @@ public class VRPInstanceIncomplete extends VRPInstance {
 
       // Check whether we should update the incumbent.
       if (routeList.length < incumbent.length && calculateExcessCapacity(routeList) == 0) {
-        double newRoutesLength = 0;
-        for (Route route : routeList.routes) {
-          newRoutesLength += route.optimize(distances);
-        }
+        double oldRoute1Length = routeList.routes.get(routeIdx1).calculateRouteLength(distances);
+        double oldRoute2Length = routeList.routes.get(routeIdx2).calculateRouteLength(distances);
+
+        double newRoutesLength = routeList.length;
+        newRoutesLength -= oldRoute1Length + oldRoute2Length;
+
+        newRoutesLength += routeList.routes.get(routeIdx1).optimize(distances);
+        newRoutesLength += routeList.routes.get(routeIdx2).optimize(distances);
+
         routeList.length = newRoutesLength;
         incumbent = routeList.clone();
       }

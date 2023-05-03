@@ -4,6 +4,7 @@ import ilog.concert.IloException;
 import ilog.concert.IloLinearNumExpr;
 import ilog.concert.IloNumVar;
 import ilog.cplex.IloCplex;
+import ilog.cplex.IloCplex.Param;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,10 +34,21 @@ public class Route implements Cloneable {
     return newRoute;
   }
 
+  public double calculateRouteLength(double[][] distances) {
+    double routeLength = 0;
+    for (int i = 0; i < customers.size() - 1; i++) {
+      routeLength += distances[customers.get(i)][customers.get(i + 1)];
+    }
+    return routeLength;
+  }
+
   public double optimize(double[][] distances) {
     try (IloCplex tspModel = new IloCplex()) {
+      /*
       tspModel.setOut(null);
       tspModel.setWarning(null);
+       */
+      tspModel.setParam(Param.TimeLimit, 5);
 
       int numCustomers = customers.size() - 1;
 
