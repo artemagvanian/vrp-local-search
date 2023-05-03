@@ -137,6 +137,11 @@ public class VRPInstanceIncomplete extends VRPInstance {
 
       // Check whether we should update the incumbent.
       if (routeList.length < incumbent.length && calculateExcessCapacity(routeList) == 0) {
+        double newRoutesLength = 0;
+        for (Route route : routeList.routes) {
+          newRoutesLength += route.optimize(distances);
+        }
+        routeList.length = newRoutesLength;
         incumbent = routeList.clone();
       }
 
