@@ -69,11 +69,9 @@ public class VRPInstanceIncomplete extends VRPInstance {
     routeList = generateInitialSolution();
 
     // Optimize routes.
-    double newRoutesLength = 0;
     for (Route route : routeList.routes) {
-      newRoutesLength += route.optimize(distances);
+      routeList.length += route.optimize(distances);
     }
-    routeList.length = newRoutesLength;
 
     incumbent = routeList.clone();
     objective = calculateObjective(incumbent.length, 0);
@@ -153,16 +151,8 @@ public class VRPInstanceIncomplete extends VRPInstance {
 
       // Check whether we should update the incumbent.
       if (routeList.length < incumbent.length && calculateExcessCapacity(routeList) == 0) {
-        double oldRoute1Length = routeList.routes.get(routeIdx1).calculateRouteLength(distances);
-        double oldRoute2Length = routeList.routes.get(routeIdx2).calculateRouteLength(distances);
-
-        double newRoutesLength = routeList.length;
-        newRoutesLength -= oldRoute1Length + oldRoute2Length;
-
-        newRoutesLength += routeList.routes.get(routeIdx1).optimize(distances);
-        newRoutesLength += routeList.routes.get(routeIdx2).optimize(distances);
-
-        routeList.length = newRoutesLength;
+        routeList.length += routeList.routes.get(routeIdx1).optimize(distances);
+        routeList.length += routeList.routes.get(routeIdx2).optimize(distances);
         incumbent = routeList.clone();
       }
 
@@ -171,7 +161,6 @@ public class VRPInstanceIncomplete extends VRPInstance {
         excessCapacityPenaltyCoefficient /= 1.25;
       } else {
         excessCapacityPenaltyCoefficient *= 1.25;
-        excessCapacityPenaltyCoefficient = Math.min(excessCapacityPenaltyCoefficient, 1000000);
       }
 
       // Log the data to the console.
@@ -179,7 +168,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
       System.out.println("Current objective: " + objective);
       System.out.println("Penalty Coefficient: " + excessCapacityPenaltyCoefficient);
       System.out.println("Short-term memory: " + shortTermMemory);
-      System.out.println("WATCH: " + watch.getTime());
+      System.out.println("Elapsed time: " + watch.getTime());
     }
   }
 
@@ -210,9 +199,6 @@ public class VRPInstanceIncomplete extends VRPInstance {
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
-    }
-
-    for (BestInsertionCalculator thread : pool) {
       if (thread.bestObjective < bestObjective) {
         // Save the best place to insert this customer so far.
         bestInterchange = thread.bestInterchange;
@@ -259,9 +245,6 @@ public class VRPInstanceIncomplete extends VRPInstance {
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
-    }
-
-    for (BestSwapCalculator thread : pool) {
       if (thread.bestObjective < bestObjective) {
         // Save the best place to insert this customer so far.
         bestInterchange = thread.bestInterchange;
@@ -270,16 +253,6 @@ public class VRPInstanceIncomplete extends VRPInstance {
     }
 
     return bestInterchange;
-  }
-
-  private boolean isCustomerTabu(int routeIdx, int customerIdx) {
-    int customer = routeList.routes.get(routeIdx).customers.get(customerIdx);
-    for (TabuItem item : shortTermMemory) {
-      if (item.customer == customer) {
-        return true;
-      }
-    }
-    return false;
   }
 
   private double calculateObjective(double tourLength, double excessCapacity) {

@@ -135,8 +135,13 @@ public class Route implements Cloneable {
         newRoute.add(0);
         newRouteLength += distances[0][newRoute.get(newRoute.size() - 1)];
 
-        customers = newRoute;
-        return newRouteLength;
+        double oldRouteLength = calculateRouteLength(distances);
+        if (newRouteLength < oldRouteLength) {
+          customers = newRoute;
+          return newRouteLength - oldRouteLength;
+        } else {
+          return 0;
+        }
       } else {
         throw new IllegalArgumentException("Infeasible TSP model.");
       }
