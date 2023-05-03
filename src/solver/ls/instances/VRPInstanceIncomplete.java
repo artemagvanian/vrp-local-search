@@ -7,13 +7,12 @@ import ilog.cplex.IloCplex;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import solver.ls.utils.Timer;
-
 import solver.ls.data.Insertion;
 import solver.ls.data.Interchange;
 import solver.ls.data.Route;
 import solver.ls.data.RouteList;
 import solver.ls.data.TabuItem;
+import solver.ls.utils.Timer;
 
 public class VRPInstanceIncomplete extends VRPInstance {
 
@@ -37,6 +36,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
    * Random number generator for the instance.
    */
   private final Random rand;
+  private final Timer watch;
   /**
    * Current best solution, with no excess capacity.
    */
@@ -49,8 +49,6 @@ public class VRPInstanceIncomplete extends VRPInstance {
    * Current best objective, calculated as specified by the objective function.
    */
   private double objective;
-
-  private Timer watch;
   /**
    * Initial penalty coefficient for the objective function.
    */
@@ -62,9 +60,10 @@ public class VRPInstanceIncomplete extends VRPInstance {
     this.maxIterations = maxIterations;
     this.watch = watch;
     // Set tabu tenure limits
-    int constantTabu = 1; // optimal based on testing
-    this.minimumTabuTenure = constantTabu;
-    this.maximumTabuTenure = constantTabu;
+    int constantTabu = 3;
+    int delta = 2;
+    this.minimumTabuTenure = constantTabu - delta;
+    this.maximumTabuTenure = constantTabu + delta;
     // Generate the initial solution, initialize variables.
     routeList = generateInitialSolution();
     incumbent = routeList.clone();
@@ -86,7 +85,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
     Interchange bestSwap;
 
     int currentIteration = 0;
-    boolean firstBestFirst = false; // hyperparameter
+    boolean firstBestFirst = true; // hyperparameter
 
     // Keep going for a fixed number of iterations.
     while (currentIteration < maxIterations && watch.getTime() < 297.0) {
@@ -201,10 +200,10 @@ public class VRPInstanceIncomplete extends VRPInstance {
               // Save the best place to insert this customer so far.
               bestInterchange = interchange;
               bestObjective = newObjective;
+            }
 
-              if (fbf) {
-                return bestInterchange;
-              }
+            if (fbf && newObjective < incumbent.length) {
+              return bestInterchange;
             }
           }
         }
@@ -273,9 +272,10 @@ public class VRPInstanceIncomplete extends VRPInstance {
                   // Update the best values so far.
                   bestObjective = newObjective;
                   bestInterchange = interchange;
-                  if (fbf) {
-                    return bestInterchange;
-                  }
+                }
+
+                if (fbf && newObjective < incumbent.length) {
+                  return bestInterchange;
                 }
               }
             }

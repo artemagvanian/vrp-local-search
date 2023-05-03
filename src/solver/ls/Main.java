@@ -70,7 +70,7 @@ public class Main {
 
     // Generate the solution files.
     // only replace the current one if the new solution is better
-    Scanner read = null;
+    Scanner read;
     String fullFileName = "./solutions/" + filename + ".sol";
     double currentBest = Double.MAX_VALUE;
 
