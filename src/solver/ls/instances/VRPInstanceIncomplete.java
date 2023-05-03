@@ -7,11 +7,12 @@ import ilog.cplex.IloCplex;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import solver.ls.data.Insertion;
 import solver.ls.data.Interchange;
 import solver.ls.data.Route;
 import solver.ls.data.RouteList;
 import solver.ls.data.TabuItem;
+import solver.ls.threads.BestInsertionCalculator;
+import solver.ls.threads.BestSwapCalculator;
 import solver.ls.utils.Timer;
 
 public class VRPInstanceIncomplete extends VRPInstance {
@@ -192,46 +193,30 @@ public class VRPInstanceIncomplete extends VRPInstance {
     Interchange bestInterchange = null;
     double bestObjective = Double.POSITIVE_INFINITY;
 
+    List<BestInsertionCalculator> pool = new ArrayList<>();
+
     // Checks every customer index.
     for (int routeIdx1 = 0; routeIdx1 < routeList.routes.size(); routeIdx1++) {
-      for (int routeIdx2 = 0; routeIdx2 < routeList.routes.size(); routeIdx2++) {
-        if (routeIdx2 == routeIdx1) {
-          continue;
-        }
-        Route route1 = routeList.routes.get(routeIdx1);
-        Route route2 = routeList.routes.get(routeIdx2);
+      BestInsertionCalculator thread = new BestInsertionCalculator(routeIdx1,
+          routeList, incumbent, excessCapacityPenaltyCoefficient, demandOfCustomer,
+          vehicleCapacity, distances, shortTermMemory, fbf);
+      thread.start();
+      pool.add(thread);
+    }
 
-        for (int customerIdxFrom = 1; customerIdxFrom < route1.customers.size() - 1;
-            customerIdxFrom++) {
-          // Check whether the current customer is in the tabu list.
-          if (isCustomerTabu(routeIdx1, customerIdxFrom)) {
-            continue;
-          }
+    for (BestInsertionCalculator thread : pool) {
+      try {
+        thread.join();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
 
-          for (int customerIdxTo = 1; customerIdxTo < route2.customers.size(); customerIdxTo++) {
-            Insertion insertion = new Insertion(customerIdxFrom, customerIdxTo);
-            Interchange interchange = new Interchange(routeIdx1,
-                new ArrayList<>(List.of(insertion)), routeIdx2, new ArrayList<>(List.of()));
-
-            double newTotalLength =
-                routeList.length + routeList.calculateEdgeDelta(interchange, distances);
-            double excessCapacity = routeList.calculateExcessCapacity(interchange, demandOfCustomer,
-                vehicleCapacity);
-
-            // Calculate objective function and check whether it is better than the current.
-            double newObjective =
-                newTotalLength + excessCapacity * excessCapacityPenaltyCoefficient;
-            if (newObjective < bestObjective) {
-              // Save the best place to insert this customer so far.
-              bestInterchange = interchange;
-              bestObjective = newObjective;
-            }
-
-            if (fbf && newObjective < incumbent.length) {
-              return bestInterchange;
-            }
-          }
-        }
+    for (BestInsertionCalculator thread : pool) {
+      if (thread.bestObjective < bestObjective) {
+        // Save the best place to insert this customer so far.
+        bestInterchange = thread.bestInterchange;
+        bestObjective = thread.bestObjective;
       }
     }
 
@@ -257,55 +242,30 @@ public class VRPInstanceIncomplete extends VRPInstance {
     Interchange bestInterchange = null;
     double bestObjective = Double.POSITIVE_INFINITY;
 
-    // For each generated pair.
+    List<BestSwapCalculator> pool = new ArrayList<>();
+
+    // Checks every customer index.
     for (int routeIdx1 = 0; routeIdx1 < routeList.routes.size(); routeIdx1++) {
-      for (int routeIdx2 = routeIdx1 + 1; routeIdx2 < routeList.routes.size(); routeIdx2++) {
-        Route route1 = routeList.routes.get(routeIdx1);
-        Route route2 = routeList.routes.get(routeIdx2);
-        // Account for depots here.
-        for (int customer1IdxFrom = 1; customer1IdxFrom < route1.customers.size() - 1;
-            customer1IdxFrom++) {
-          if (isCustomerTabu(routeIdx1, customer1IdxFrom)) {
-            continue;
-          }
-          for (int customer2IdxFrom = 1; customer2IdxFrom < route2.customers.size() - 1;
-              customer2IdxFrom++) {
-            if (isCustomerTabu(routeIdx2, customer2IdxFrom)) {
-              continue;
-            }
+      BestSwapCalculator thread = new BestSwapCalculator(routeIdx1,
+          routeList, incumbent, excessCapacityPenaltyCoefficient, demandOfCustomer,
+          vehicleCapacity, distances, shortTermMemory, fbf);
+      thread.start();
+      pool.add(thread);
+    }
 
-            for (int customer1IdxTo = 1; customer1IdxTo < route2.customers.size() - 1;
-                customer1IdxTo++) {
-              for (int customer2IdxTo = 1; customer2IdxTo < route1.customers.size() - 1;
-                  customer2IdxTo++) {
-                Insertion insertion1 = new Insertion(customer1IdxFrom, customer1IdxTo);
-                Insertion insertion2 = new Insertion(customer2IdxFrom, customer2IdxTo);
-                Interchange interchange = new Interchange(routeIdx1,
-                    new ArrayList<>(List.of(insertion1)), routeIdx2,
-                    new ArrayList<>(List.of(insertion2)));
+    for (BestSwapCalculator thread : pool) {
+      try {
+        thread.join();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
 
-                double newTotalLength =
-                    routeList.length + routeList.calculateEdgeDelta(interchange, distances);
-                double excessCapacity = routeList.calculateExcessCapacity(interchange,
-                    demandOfCustomer, vehicleCapacity);
-
-                double newObjective =
-                    newTotalLength + excessCapacity * excessCapacityPenaltyCoefficient;
-
-                // If we are better than what we have now.
-                if (newObjective < bestObjective) {
-                  // Update the best values so far.
-                  bestObjective = newObjective;
-                  bestInterchange = interchange;
-                }
-
-                if (fbf && newObjective < incumbent.length) {
-                  return bestInterchange;
-                }
-              }
-            }
-          }
-        }
+    for (BestSwapCalculator thread : pool) {
+      if (thread.bestObjective < bestObjective) {
+        // Save the best place to insert this customer so far.
+        bestInterchange = thread.bestInterchange;
+        bestObjective = thread.bestObjective;
       }
     }
 
