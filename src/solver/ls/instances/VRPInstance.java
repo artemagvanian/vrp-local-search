@@ -2,6 +2,7 @@ package solver.ls.instances;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.HashMap;
 import java.util.Scanner;
 
 public abstract class VRPInstance {
@@ -71,5 +72,26 @@ public abstract class VRPInstance {
     return distances;
   }
 
+  protected int bestTenureFromExperimentation(String fileName){
+    HashMap<String, Integer> bestTenureValues = new HashMap<>();
+    bestTenureValues.put("input/5_4_10.vrp", 1);
+    bestTenureValues.put("input/16_5_1.vrp", 5);
+    bestTenureValues.put("input/21_4_1.vrp", 1);
+    bestTenureValues.put("input/30_4_1.vrp", 12);
+    bestTenureValues.put("input/41_14_1.vrp", 8);
+    bestTenureValues.put("input/45_4_1.vrp", 13);
+    bestTenureValues.put("input/51_5_1.vrp", 7);
+    bestTenureValues.put("input/76_8_2.vrp", 8);
+    bestTenureValues.put("input/101_8_1.vrp", 14);
+    bestTenureValues.put("input/101_11_2.vrp", 10);
+    bestTenureValues.put("input/121_7_1.vrp", 12);
+    bestTenureValues.put("input/135_7_1.vrp", 40);
+    bestTenureValues.put("input/151_15_1.vrp", 25);
+    bestTenureValues.put("input/200_16_2.vrp", 16);
+    bestTenureValues.put("input/241_22_1.vrp", 40);
+    bestTenureValues.put("input/262_25_1.vrp", 15);
+    bestTenureValues.put("input/386_47_1.vrp", 79);
 
+    return bestTenureValues.get(fileName);
+  }
 }
