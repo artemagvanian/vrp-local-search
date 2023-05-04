@@ -12,7 +12,7 @@ public class Insertion {
 
   @Override
   public String toString() {
-    return "OneInterchange{" + ", fromCustomerIdx=" + fromCustomerIdx + ", toCustomerIdx="
-        + toCustomerIdx + '}';
+    return "{" + "\"fromCustomerIdx\": " + fromCustomerIdx + ", \"toCustomerIdx\": " + toCustomerIdx
+        + '}';
   }
 }

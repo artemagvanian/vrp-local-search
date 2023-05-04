@@ -1,4 +1,4 @@
-package solver.ls.threads;
+package solver.ls.interchanges;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,33 +14,20 @@ public class BestSwapCalculator implements Callable<InterchangeResult> {
 
   private final int routeIdx1;
   private final RouteList routeList;
-
   private final RouteList incumbent;
-
   private final double excessCapacityPenaltyCoefficient;
-
-  private final int[] demandOfCustomer;
-
-  private final int vehicleCapacity;
-
-  private final double[][] distances;
-
   private final List<TabuItem> shortTermMemory;
   private final boolean firstBestFirst;
   private Interchange bestInterchange;
   private double bestObjective = Double.POSITIVE_INFINITY;
 
-  public BestSwapCalculator(int routeIdx1, RouteList routeList,
-      RouteList incumbent, double excessCapacityPenaltyCoefficient, int[] demandOfCustomer,
-      int vehicleCapacity, double[][] distances, List<TabuItem> shortTermMemory,
+  public BestSwapCalculator(int routeIdx1, RouteList routeList, RouteList incumbent,
+      double excessCapacityPenaltyCoefficient, List<TabuItem> shortTermMemory,
       boolean firstBestFirst) {
     this.routeIdx1 = routeIdx1;
     this.routeList = routeList;
     this.incumbent = incumbent;
     this.excessCapacityPenaltyCoefficient = excessCapacityPenaltyCoefficient;
-    this.demandOfCustomer = demandOfCustomer;
-    this.vehicleCapacity = vehicleCapacity;
-    this.distances = distances;
     this.shortTermMemory = shortTermMemory;
     this.firstBestFirst = firstBestFirst;
   }
@@ -56,6 +43,7 @@ public class BestSwapCalculator implements Callable<InterchangeResult> {
   }
 
   public InterchangeResult call() {
+    // Check every route with which we can swap.
     for (int routeIdx2 = routeIdx1 + 1; routeIdx2 < routeList.routes.size(); routeIdx2++) {
       Route route1 = routeList.routes.get(routeIdx1);
       Route route2 = routeList.routes.get(routeIdx2);
@@ -82,9 +70,8 @@ public class BestSwapCalculator implements Callable<InterchangeResult> {
                   new ArrayList<>(List.of(insertion2)));
 
               double newTotalLength =
-                  routeList.length + routeList.calculateEdgeDelta(interchange, distances);
-              double excessCapacity = routeList.calculateExcessCapacity(interchange,
-                  demandOfCustomer, vehicleCapacity);
+                  routeList.length + routeList.calculateEdgeDelta(interchange);
+              double excessCapacity = routeList.calculateExcessCapacity(interchange);
 
               double newObjective =
                   newTotalLength + excessCapacity * excessCapacityPenaltyCoefficient;

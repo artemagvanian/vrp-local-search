@@ -6,17 +6,24 @@ import java.util.List;
 
 public class RouteList implements Cloneable {
 
+  private final double[][] distances;
+  private final int[] demandOfCustomer;
+  private final int vehicleCapacity;
   public List<Route> routes;
   public double length;
 
-  public RouteList(List<Route> routes, double length) {
+  public RouteList(List<Route> routes, double length, double[][] distances, int[] demandOfCustomer,
+      int vehicleCapacity) {
     this.routes = routes;
     this.length = length;
+    this.distances = distances;
+    this.demandOfCustomer = demandOfCustomer;
+    this.vehicleCapacity = vehicleCapacity;
   }
 
   @Override
   public String toString() {
-    return "RouteList{" + "routes=" + routes + ", length=" + length + '}';
+    return "{" + "\"routes\": " + routes + ", \"length\": " + length + '}';
   }
 
   public RouteList clone() {
@@ -35,23 +42,22 @@ public class RouteList implements Cloneable {
     return clonedRoutes;
   }
 
-  public double calculateEdgeDelta(Interchange interchange, double[][] distances) {
+  public double calculateEdgeDelta(Interchange interchange) {
     Route route1 = routes.get(interchange.routeIdx1);
     Route route2 = routes.get(interchange.routeIdx2);
 
     if (interchange.insertionList1.size() == 1 && interchange.insertionList2.size() == 0) {
       Insertion insertion = interchange.insertionList1.get(0);
       // Insertion delta.
-      return calculateInsertionDelta(distances, route1, route2, insertion);
+      return calculateInsertionDelta(route1, route2, insertion);
     } else if (interchange.insertionList1.size() == 1 && interchange.insertionList2.size() == 1) {
-      return calculateSwapDelta(interchange, distances, route1, route2);
+      return calculateSwapDelta(route1, route2, interchange);
     } else {
       throw new IllegalArgumentException("Can only process 1-interchanges.");
     }
   }
 
-  private double calculateSwapDelta(Interchange interchange, double[][] distances,
-      Route route1, Route route2) {
+  private double calculateSwapDelta(Route route1, Route route2, Interchange interchange) {
     Insertion insertion1 = interchange.insertionList1.get(0);
     Insertion insertion2 = interchange.insertionList2.get(0);
 
@@ -98,8 +104,7 @@ public class RouteList implements Cloneable {
     return extractionDelta + insertionDelta;
   }
 
-  private double calculateInsertionDelta(double[][] distances, Route route1, Route route2,
-      Insertion insertion) {
+  private double calculateInsertionDelta(Route route1, Route route2, Insertion insertion) {
     int customer = route1.customers.get(insertion.fromCustomerIdx);
     int currentLeftNeighbor = route1.customers.get(insertion.fromCustomerIdx - 1);
     int currentRightNeighbor = route1.customers.get(insertion.fromCustomerIdx + 1);
@@ -118,8 +123,7 @@ public class RouteList implements Cloneable {
     return edgePositiveDelta - edgeNegativeDelta;
   }
 
-  public int calculateExcessCapacity(Interchange interchange, int[] demandOfCustomer,
-      int vehicleCapacity) {
+  public int calculateExcessCapacity(Interchange interchange) {
     Route route1 = routes.get(interchange.routeIdx1);
     Route route2 = routes.get(interchange.routeIdx2);
 
@@ -156,8 +160,8 @@ public class RouteList implements Cloneable {
     return excessCapacity;
   }
 
-  public void perform(Interchange interchange, double[][] distances, int[] demandOfCustomer) {
-    length += calculateEdgeDelta(interchange, distances);
+  public void perform(Interchange interchange) {
+    length += calculateEdgeDelta(interchange);
 
     Route route1 = routes.get(interchange.routeIdx1);
     Route route2 = routes.get(interchange.routeIdx2);

@@ -8,4 +8,12 @@ public class InterchangeResult {
     this.interchange = interchange;
     this.objective = objective;
   }
+
+  @Override
+  public String toString() {
+    return "{" +
+        "\"interchange\": " + interchange +
+        ", \"objective\": " + objective +
+        '}';
+  }
 }

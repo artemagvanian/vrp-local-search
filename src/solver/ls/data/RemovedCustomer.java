@@ -12,6 +12,6 @@ public class RemovedCustomer {
 
   @Override
   public String toString() {
-    return "RemovedCustomer{" + "customer=" + customer + ", insertion=" + insertion + '}';
+    return "{" + "\"customer\": " + customer + ", \"insertion\": " + insertion + '}';
   }
 }

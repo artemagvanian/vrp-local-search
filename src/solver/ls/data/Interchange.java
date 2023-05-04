@@ -19,7 +19,7 @@ public class Interchange {
 
   @Override
   public String toString() {
-    return "Interchange{" + "routeIdx1=" + routeIdx1 + ", insertionList1=" + insertionList1
-        + ", routeIdx2=" + routeIdx2 + ", insertionList2=" + insertionList2 + '}';
+    return "{" + "\"routeIdx1\": " + routeIdx1 + ", \"insertionList1\": " + insertionList1
+        + ", \"routeIdx2\": " + routeIdx2 + ", \"insertionList2\": " + insertionList2 + '}';
   }
 }

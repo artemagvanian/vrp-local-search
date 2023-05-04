@@ -16,8 +16,8 @@ import solver.ls.data.InterchangeResult;
 import solver.ls.data.Route;
 import solver.ls.data.RouteList;
 import solver.ls.data.TabuItem;
-import solver.ls.threads.BestInsertionCalculator;
-import solver.ls.threads.BestSwapCalculator;
+import solver.ls.interchanges.BestInsertionCalculator;
+import solver.ls.interchanges.BestSwapCalculator;
 import solver.ls.utils.Timer;
 
 public class VRPInstanceIncomplete extends VRPInstance {
@@ -25,15 +25,39 @@ public class VRPInstanceIncomplete extends VRPInstance {
   /**
    * Number of iterations to run the search for.
    */
-  private final int maxIterations;
+  private final int maxIterations = 10000;
   /**
    * The minimum value tabu tenure can take.
    */
-  private final int minimumTabuTenure;
+  private final int minimumTabuTenure = 3;
   /**
    * The maximum value tabu tenure can take.
    */
-  private final int maximumTabuTenure;
+  private final int maximumTabuTenure = 7;
+  /**
+   * Timeout to optimize the solution (seconds).
+   */
+  private final double optimizationTimeout = 10;
+  /**
+   * Allowed solution time (seconds).
+   */
+  private final double timeout = 300;
+  /**
+   * Increase greediness by grabbing the first solution that is better than the incumbent.
+   */
+  private final boolean firstBestFirst = false;
+  /**
+   * Randomly optimizes the incumbent with kOptimize chance.
+   */
+  private final double kOptimize = 0.25;
+  /**
+   * Randomly optimizes the incumbent with 1/kOptimize chance.
+   */
+  private final double penaltyMultiplier = 1.25;
+  /**
+   * How many feasible/infeasible assignments we should have to start changing the penalty.
+   */
+  private final int feasibilityBound = 5;
   /**
    * Memory list to keep the recently moved customers.
    */
@@ -42,7 +66,13 @@ public class VRPInstanceIncomplete extends VRPInstance {
    * Random number generator for the instance.
    */
   private final Random rand;
+  /**
+   * Current timer, to stop the iteration once allowed time elapses.
+   */
   private final Timer watch;
+  /**
+   * Thread pool to perform neighborhood calculations.
+   */
   private final ExecutorService executor = Executors.newFixedThreadPool(10);
   /**
    * Current best solution, with no excess capacity.
@@ -53,40 +83,46 @@ public class VRPInstanceIncomplete extends VRPInstance {
    */
   public RouteList routeList;
   /**
+   * Current iteration of SLS.
+   */
+  public int currentIteration = 0;
+  /**
    * Current best objective, calculated as specified by the objective function.
    */
   private double objective;
   /**
    * Initial penalty coefficient for the objective function.
    */
-  private double excessCapacityPenaltyCoefficient = 1;
+  private double penaltyCoefficient = 1;
+  /**
+   * How many feasible/infeasible assignments we had.
+   */
+  private int numLastFeasible = 1;
 
-  public VRPInstanceIncomplete(String fileName, int maxIterations, Timer watch) {
+  public VRPInstanceIncomplete(String fileName, Timer watch) {
     super(fileName);
     // Copy parameters.
-    this.maxIterations = maxIterations;
     this.watch = watch;
-    // Set tabu tenure limits
-    int constantTabu = 10;
-    int delta = 2;
-    this.minimumTabuTenure = constantTabu - delta;
-    this.maximumTabuTenure = constantTabu + delta;
     // Generate the initial solution, initialize variables.
     routeList = generateInitialSolution();
-
     // Optimize routes.
     for (Route route : routeList.routes) {
-      routeList.length += route.optimize(distances);
+      routeList.length += route.optimize(distances, optimizationTimeout);
     }
-
     incumbent = routeList.clone();
     objective = calculateObjective(incumbent.length, 0);
+    // Initialize helpers.
     shortTermMemory = new ArrayList<>();
     rand = new Random();
     // Objective of the initial solution.
     System.out.println("Initial objective: " + objective);
     // Perform search for a given number of iterations.
     search();
+    // Optimize routes.
+    for (Route route : routeList.routes) {
+      routeList.length += route.optimize(distances, optimizationTimeout);
+    }
+    // Shut down executor.
     executor.shutdownNow();
   }
 
@@ -98,24 +134,25 @@ public class VRPInstanceIncomplete extends VRPInstance {
     Interchange bestInsertion;
     Interchange bestSwap;
 
-    int currentIteration = 0;
-    boolean firstBestFirst = true; // hyperparameter
+    currentIteration = 0;
 
     // Keep going for a fixed number of iterations.
-    while (currentIteration < maxIterations && watch.getTime() < 297.0) {
+    while (currentIteration < maxIterations && watch.getTime() < timeout - optimizationTimeout) {
       currentIteration++;
       // Calculate both best insertion and best swap.
-      bestInsertion = findBestInsertion(firstBestFirst);
-      bestSwap = findBestSwap(firstBestFirst);
+      bestInsertion = findBestInsertion();
+      bestSwap = findBestSwap();
 
+      // Get insertion objectives, if possible.
       double insertionObjective = bestInsertion == null ? Double.POSITIVE_INFINITY
           : calculateObjective(
-              routeList.length + routeList.calculateEdgeDelta(bestInsertion, distances),
-              routeList.calculateExcessCapacity(bestInsertion, demandOfCustomer, vehicleCapacity));
+              routeList.length + routeList.calculateEdgeDelta(bestInsertion),
+              routeList.calculateExcessCapacity(bestInsertion));
       double swapObjective = bestSwap == null ? Double.POSITIVE_INFINITY
-          : calculateObjective(routeList.length + routeList.calculateEdgeDelta(bestSwap, distances),
-              routeList.calculateExcessCapacity(bestSwap, demandOfCustomer, vehicleCapacity));
+          : calculateObjective(routeList.length + routeList.calculateEdgeDelta(bestSwap),
+              routeList.calculateExcessCapacity(bestSwap));
 
+      // Route indices of the interchange, so we could optimize those later.
       int routeIdx1 = 0;
       int routeIdx2 = 0;
 
@@ -133,7 +170,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
               currentIteration + getRandomTabuTenure()));
           routeIdx1 = bestInsertion.routeIdx1;
           routeIdx2 = bestInsertion.routeIdx2;
-          routeList.perform(bestInsertion, distances, demandOfCustomer);
+          routeList.perform(bestInsertion);
         } else { // If current best swap is better.
           System.out.println("Performing action: " + bestSwap);
           objective = swapObjective;
@@ -148,7 +185,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
           routeIdx1 = bestSwap.routeIdx1;
           routeIdx2 = bestSwap.routeIdx2;
           // Perform the actual swap.
-          routeList.perform(bestSwap, distances, demandOfCustomer);
+          routeList.perform(bestSwap);
         }
       }
 
@@ -158,22 +195,41 @@ public class VRPInstanceIncomplete extends VRPInstance {
 
       // Check whether we should update the incumbent.
       if (routeList.length < incumbent.length && calculateExcessCapacity(routeList) == 0) {
-        routeList.length += routeList.routes.get(routeIdx1).optimize(distances);
-        routeList.length += routeList.routes.get(routeIdx2).optimize(distances);
+        if (rand.nextDouble() < kOptimize) { // kOptimize chance of optimization.
+          routeList.length += routeList.routes.get(routeIdx1)
+              .optimize(distances, optimizationTimeout);
+          routeList.length += routeList.routes.get(routeIdx2)
+              .optimize(distances, optimizationTimeout);
+        }
         incumbent = routeList.clone();
       }
 
-      // Adjust excess capacity coefficient.
+      // Adjust the number of last feasible solutions.
       if (calculateExcessCapacity(routeList) == 0) {
-        excessCapacityPenaltyCoefficient /= 1.25;
+        if (numLastFeasible > 0) {
+          numLastFeasible++;
+        } else {
+          numLastFeasible = 1;
+        }
       } else {
-        excessCapacityPenaltyCoefficient *= 1.25;
+        if (numLastFeasible < 0) {
+          numLastFeasible--;
+        } else {
+          numLastFeasible = -1;
+        }
+      }
+
+      // Update penalty coefficient.
+      if (numLastFeasible > feasibilityBound) {
+        penaltyCoefficient /= penaltyMultiplier;
+      } else if (numLastFeasible < -feasibilityBound) {
+        penaltyCoefficient *= penaltyMultiplier;
       }
 
       // Log the data to the console.
       System.out.println("Iteration #" + currentIteration);
       System.out.println("Current objective: " + objective);
-      System.out.println("Penalty Coefficient: " + excessCapacityPenaltyCoefficient);
+      System.out.println("Penalty Coefficient: " + penaltyCoefficient);
       System.out.println("Short-term memory: " + shortTermMemory);
       System.out.println("Elapsed time: " + watch.getTime());
     }
@@ -184,7 +240,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
    *
    * @return best possible insertion from the current routes.
    */
-  private Interchange findBestInsertion(boolean fbf) {
+  private Interchange findBestInsertion() {
     // We should consider the best available objective to avoid local minima.
     Interchange bestInterchange = null;
     double bestObjective = Double.POSITIVE_INFINITY;
@@ -193,9 +249,8 @@ public class VRPInstanceIncomplete extends VRPInstance {
 
     // Checks every customer index.
     for (int routeIdx1 = 0; routeIdx1 < routeList.routes.size(); routeIdx1++) {
-      BestInsertionCalculator task = new BestInsertionCalculator(routeIdx1,
-          routeList, incumbent, excessCapacityPenaltyCoefficient, demandOfCustomer,
-          vehicleCapacity, distances, shortTermMemory, fbf);
+      BestInsertionCalculator task = new BestInsertionCalculator(routeIdx1, routeList, incumbent,
+          penaltyCoefficient, shortTermMemory, firstBestFirst);
       tasks.add(task);
     }
 
@@ -222,7 +277,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
    * @return random tabu tenure.
    */
   private int getRandomTabuTenure() {
-    return rand.nextInt((maximumTabuTenure - minimumTabuTenure) + 1) + minimumTabuTenure;
+    return rand.nextInt(minimumTabuTenure, maximumTabuTenure + 1);
   }
 
   /**
@@ -230,7 +285,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
    *
    * @return best possible swap from the current routes
    */
-  private Interchange findBestSwap(boolean fbf) {
+  private Interchange findBestSwap() {
     // We should consider the best available objective to avoid local minima.
     Interchange bestInterchange = null;
     double bestObjective = Double.POSITIVE_INFINITY;
@@ -239,9 +294,8 @@ public class VRPInstanceIncomplete extends VRPInstance {
 
     // Checks every customer index.
     for (int routeIdx1 = 0; routeIdx1 < routeList.routes.size(); routeIdx1++) {
-      BestSwapCalculator task = new BestSwapCalculator(routeIdx1,
-          routeList, incumbent, excessCapacityPenaltyCoefficient, demandOfCustomer,
-          vehicleCapacity, distances, shortTermMemory, fbf);
+      BestSwapCalculator task = new BestSwapCalculator(routeIdx1, routeList, incumbent,
+          penaltyCoefficient, shortTermMemory, firstBestFirst);
       tasks.add(task);
     }
 
@@ -263,7 +317,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
   }
 
   private double calculateObjective(double tourLength, double excessCapacity) {
-    return tourLength + excessCapacity * excessCapacityPenaltyCoefficient;
+    return tourLength + excessCapacity * penaltyCoefficient;
   }
 
   /**
@@ -350,7 +404,8 @@ public class VRPInstanceIncomplete extends VRPInstance {
           initialRoutesLength += currentRouteLength;
         }
 
-        return new RouteList(initialRoutes, initialRoutesLength);
+        return new RouteList(initialRoutes, initialRoutesLength, distances, demandOfCustomer,
+            vehicleCapacity);
       } else {
         throw new IllegalArgumentException("Infeasible BPP model.");
       }

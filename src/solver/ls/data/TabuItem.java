@@ -12,7 +12,7 @@ public class TabuItem {
 
   @Override
   public String toString() {
-    return "TabuItem{" + "customer=" + customer + ", expirationIteration=" + expirationIteration
+    return "{" + "\"customer\":" + customer + ", \"expirationIteration\":" + expirationIteration
         + '}';
   }
 }

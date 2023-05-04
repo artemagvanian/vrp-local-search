@@ -20,7 +20,7 @@ public class Route implements Cloneable {
 
   @Override
   public String toString() {
-    return "Route{" + "customers=" + customers + ", demand=" + demand + '}';
+    return "{" + "\"customers\": " + customers + ", \"demand\": " + demand + '}';
   }
 
   public Route clone() {
@@ -42,13 +42,13 @@ public class Route implements Cloneable {
     return routeLength;
   }
 
-  public double optimize(double[][] distances) {
+  public double optimize(double[][] distances, double timeout) {
     try (IloCplex tspModel = new IloCplex()) {
       /*
       tspModel.setOut(null);
       tspModel.setWarning(null);
        */
-      tspModel.setParam(Param.TimeLimit, 5);
+      tspModel.setParam(Param.TimeLimit, timeout);
 
       int numCustomers = customers.size() - 1;
 
