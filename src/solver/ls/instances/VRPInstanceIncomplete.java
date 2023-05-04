@@ -29,15 +29,15 @@ public class VRPInstanceIncomplete extends VRPInstance {
   /**
    * The minimum value tabu tenure can take.
    */
-  private final int minimumTabuTenure = 3;
+  private final int minimumTabuTenure = 5;
   /**
    * The maximum value tabu tenure can take.
    */
-  private final int maximumTabuTenure = 7;
+  private final int maximumTabuTenure = 10;
   /**
    * Timeout to optimize the solution (seconds).
    */
-  private final double optimizationTimeout = 10;
+  private final double optimizationTimeout = 5;
   /**
    * Allowed solution time (seconds).
    */
@@ -53,11 +53,11 @@ public class VRPInstanceIncomplete extends VRPInstance {
   /**
    * Randomly optimizes the incumbent with 1/kOptimize chance.
    */
-  private final double penaltyMultiplier = 1.25;
+  private final double penaltyMultiplier = 1.5;
   /**
    * How many feasible/infeasible assignments we should have to start changing the penalty.
    */
-  private final int feasibilityBound = 5;
+  private final int feasibilityBound = 10;
   /**
    * Memory list to keep the recently moved customers.
    */
@@ -73,7 +73,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
   /**
    * Thread pool to perform neighborhood calculations.
    */
-  private final ExecutorService executor = Executors.newFixedThreadPool(10);
+  private final ExecutorService executor = Executors.newFixedThreadPool(16);
   /**
    * Current best solution, with no excess capacity.
    */
@@ -118,10 +118,6 @@ public class VRPInstanceIncomplete extends VRPInstance {
     System.out.println("Initial objective: " + objective);
     // Perform search for a given number of iterations.
     search();
-    // Optimize routes.
-    for (Route route : routeList.routes) {
-      routeList.length += route.optimize(distances, optimizationTimeout);
-    }
     // Shut down executor.
     executor.shutdownNow();
   }
@@ -137,7 +133,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
     currentIteration = 0;
 
     // Keep going for a fixed number of iterations.
-    while (currentIteration < maxIterations && watch.getTime() < timeout - optimizationTimeout) {
+    while (currentIteration < maxIterations && watch.getTime() < timeout - 5) {
       currentIteration++;
       // Calculate both best insertion and best swap.
       bestInsertion = findBestInsertion();

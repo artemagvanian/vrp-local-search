@@ -1,9 +1,9 @@
 package solver.ls.data;
 
-public class Insertion {
+public class Insertion implements Cloneable {
 
-  public final int fromCustomerIdx;
-  public final int toCustomerIdx;
+  public int fromCustomerIdx;
+  public int toCustomerIdx;
 
   public Insertion(int fromCustomerIdx, int toCustomerIdx) {
     this.fromCustomerIdx = fromCustomerIdx;
@@ -14,5 +14,14 @@ public class Insertion {
   public String toString() {
     return "{" + "\"fromCustomerIdx\": " + fromCustomerIdx + ", \"toCustomerIdx\": " + toCustomerIdx
         + '}';
+  }
+
+  @Override
+  public Insertion clone() {
+    try {
+      return (Insertion) super.clone();
+    } catch (CloneNotSupportedException e) {
+      throw new AssertionError();
+    }
   }
 }

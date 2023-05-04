@@ -43,25 +43,26 @@ public class BestInsertionCalculator implements Callable<InterchangeResult> {
   }
 
   public InterchangeResult call() {
+    // Dummy interchange, to be edited later.
+    Interchange interchange = new Interchange(
+        routeIdx1, new ArrayList<>(List.of(new Insertion(0, 0))),
+        0, new ArrayList<>(List.of()));
+
     // Check every route into which we can insert.
     for (int routeIdx2 = 0; routeIdx2 < routeList.routes.size(); routeIdx2++) {
       if (routeIdx2 == routeIdx1) {
         continue;
       }
+      interchange.routeIdx2 = routeIdx2;
+
       Route route1 = routeList.routes.get(routeIdx1);
       Route route2 = routeList.routes.get(routeIdx2);
 
       for (int customerIdxFrom = 1; customerIdxFrom < route1.customers.size() - 1;
           customerIdxFrom++) {
-        // Check whether the current customer is in the tabu list.
-        if (isCustomerTabu(routeIdx1, customerIdxFrom)) {
-          continue;
-        }
-
+        interchange.insertionList1.get(0).fromCustomerIdx = customerIdxFrom;
         for (int customerIdxTo = 1; customerIdxTo < route2.customers.size(); customerIdxTo++) {
-          Insertion insertion = new Insertion(customerIdxFrom, customerIdxTo);
-          Interchange interchange = new Interchange(routeIdx1, new ArrayList<>(List.of(insertion)),
-              routeIdx2, new ArrayList<>(List.of()));
+          interchange.insertionList1.get(0).toCustomerIdx = customerIdxTo;
 
           double newTotalLength =
               routeList.length + routeList.calculateEdgeDelta(interchange);
@@ -70,12 +71,16 @@ public class BestInsertionCalculator implements Callable<InterchangeResult> {
           // Calculate objective function and check whether it is better than the current.
           double newObjective = newTotalLength + excessCapacity * excessCapacityPenaltyCoefficient;
           if (newObjective < bestObjective) {
-            // Save the best place to insert this customer so far.
-            bestInterchange = interchange;
-            bestObjective = newObjective;
+            // Check whether the current customer is in the tabu list, account for aspiration.
+            if (!isCustomerTabu(routeIdx1, customerIdxFrom) ||
+                (newObjective < incumbent.length && excessCapacity == 0)) {
+              // Save the best place to insert this customer so far.
+              bestInterchange = interchange.clone();
+              bestObjective = newObjective;
+            }
           }
 
-          if (firstBestFirst && newObjective < incumbent.length) {
+          if (firstBestFirst && newObjective < incumbent.length && excessCapacity == 0) {
             return new InterchangeResult(bestInterchange, bestObjective);
           }
         }
