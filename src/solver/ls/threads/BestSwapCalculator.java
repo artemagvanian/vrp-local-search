@@ -2,13 +2,15 @@ package solver.ls.threads;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
 import solver.ls.data.Insertion;
 import solver.ls.data.Interchange;
+import solver.ls.data.InterchangeResult;
 import solver.ls.data.Route;
 import solver.ls.data.RouteList;
 import solver.ls.data.TabuItem;
 
-public class BestSwapCalculator extends Thread {
+public class BestSwapCalculator implements Callable<InterchangeResult> {
 
   private final int routeIdx1;
   private final RouteList routeList;
@@ -25,8 +27,8 @@ public class BestSwapCalculator extends Thread {
 
   private final List<TabuItem> shortTermMemory;
   private final boolean firstBestFirst;
-  public Interchange bestInterchange;
-  public double bestObjective = Double.POSITIVE_INFINITY;
+  private Interchange bestInterchange;
+  private double bestObjective = Double.POSITIVE_INFINITY;
 
   public BestSwapCalculator(int routeIdx1, RouteList routeList,
       RouteList incumbent, double excessCapacityPenaltyCoefficient, int[] demandOfCustomer,
@@ -53,7 +55,7 @@ public class BestSwapCalculator extends Thread {
     return false;
   }
 
-  public void run() {
+  public InterchangeResult call() {
     for (int routeIdx2 = routeIdx1 + 1; routeIdx2 < routeList.routes.size(); routeIdx2++) {
       Route route1 = routeList.routes.get(routeIdx1);
       Route route2 = routeList.routes.get(routeIdx2);
@@ -95,12 +97,13 @@ public class BestSwapCalculator extends Thread {
               }
 
               if (firstBestFirst && newObjective < incumbent.length) {
-                return;
+                return new InterchangeResult(bestInterchange, bestObjective);
               }
             }
           }
         }
       }
     }
+    return new InterchangeResult(bestInterchange, bestObjective);
   }
 }

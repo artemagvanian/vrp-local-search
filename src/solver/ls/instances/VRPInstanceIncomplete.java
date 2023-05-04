@@ -7,7 +7,12 @@ import ilog.cplex.IloCplex;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import solver.ls.data.Interchange;
+import solver.ls.data.InterchangeResult;
 import solver.ls.data.Route;
 import solver.ls.data.RouteList;
 import solver.ls.data.TabuItem;
@@ -38,6 +43,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
    */
   private final Random rand;
   private final Timer watch;
+  private final ExecutorService executor = Executors.newFixedThreadPool(10);
   /**
    * Current best solution, with no excess capacity.
    */
@@ -61,7 +67,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
     this.maxIterations = maxIterations;
     this.watch = watch;
     // Set tabu tenure limits
-    int constantTabu = 5;
+    int constantTabu = 10;
     int delta = 2;
     this.minimumTabuTenure = constantTabu - delta;
     this.maximumTabuTenure = constantTabu + delta;
@@ -81,6 +87,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
     System.out.println("Initial objective: " + objective);
     // Perform search for a given number of iterations.
     search();
+    executor.shutdownNow();
   }
 
   /**
@@ -182,28 +189,28 @@ public class VRPInstanceIncomplete extends VRPInstance {
     Interchange bestInterchange = null;
     double bestObjective = Double.POSITIVE_INFINITY;
 
-    List<BestInsertionCalculator> pool = new ArrayList<>();
+    List<Callable<InterchangeResult>> tasks = new ArrayList<>();
 
     // Checks every customer index.
     for (int routeIdx1 = 0; routeIdx1 < routeList.routes.size(); routeIdx1++) {
-      BestInsertionCalculator thread = new BestInsertionCalculator(routeIdx1,
+      BestInsertionCalculator task = new BestInsertionCalculator(routeIdx1,
           routeList, incumbent, excessCapacityPenaltyCoefficient, demandOfCustomer,
           vehicleCapacity, distances, shortTermMemory, fbf);
-      thread.start();
-      pool.add(thread);
+      tasks.add(task);
     }
 
-    for (BestInsertionCalculator thread : pool) {
-      try {
-        thread.join();
-      } catch (Exception e) {
-        throw new RuntimeException(e);
+    try {
+      List<Future<InterchangeResult>> futures = executor.invokeAll(tasks);
+      for (Future<InterchangeResult> future : futures) {
+        InterchangeResult result = future.get();
+        if (result.objective < bestObjective) {
+          // Save the best place to insert this customer so far.
+          bestInterchange = result.interchange;
+          bestObjective = result.objective;
+        }
       }
-      if (thread.bestObjective < bestObjective) {
-        // Save the best place to insert this customer so far.
-        bestInterchange = thread.bestInterchange;
-        bestObjective = thread.bestObjective;
-      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
 
     return bestInterchange;
@@ -228,28 +235,28 @@ public class VRPInstanceIncomplete extends VRPInstance {
     Interchange bestInterchange = null;
     double bestObjective = Double.POSITIVE_INFINITY;
 
-    List<BestSwapCalculator> pool = new ArrayList<>();
+    List<Callable<InterchangeResult>> tasks = new ArrayList<>();
 
     // Checks every customer index.
     for (int routeIdx1 = 0; routeIdx1 < routeList.routes.size(); routeIdx1++) {
-      BestSwapCalculator thread = new BestSwapCalculator(routeIdx1,
+      BestSwapCalculator task = new BestSwapCalculator(routeIdx1,
           routeList, incumbent, excessCapacityPenaltyCoefficient, demandOfCustomer,
           vehicleCapacity, distances, shortTermMemory, fbf);
-      thread.start();
-      pool.add(thread);
+      tasks.add(task);
     }
 
-    for (BestSwapCalculator thread : pool) {
-      try {
-        thread.join();
-      } catch (Exception e) {
-        throw new RuntimeException(e);
+    try {
+      List<Future<InterchangeResult>> futures = executor.invokeAll(tasks);
+      for (Future<InterchangeResult> future : futures) {
+        InterchangeResult result = future.get();
+        if (result.objective < bestObjective) {
+          // Save the best place to insert this customer so far.
+          bestInterchange = result.interchange;
+          bestObjective = result.objective;
+        }
       }
-      if (thread.bestObjective < bestObjective) {
-        // Save the best place to insert this customer so far.
-        bestInterchange = thread.bestInterchange;
-        bestObjective = thread.bestObjective;
-      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
 
     return bestInterchange;
