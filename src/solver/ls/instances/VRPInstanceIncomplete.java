@@ -277,7 +277,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
    * @return random tabu tenure.
    */
   private int getRandomTabuTenure() {
-    return rand.nextInt(minimumTabuTenure, maximumTabuTenure + 1);
+    return rand.nextInt((maximumTabuTenure - minimumTabuTenure) + 1) + minimumTabuTenure;
   }
 
   /**
