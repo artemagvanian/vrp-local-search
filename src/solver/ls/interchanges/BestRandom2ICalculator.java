@@ -25,6 +25,10 @@ public class BestRandom2ICalculator extends InterchangeCalculator {
     this.numAttempts = numAttempts;
   }
 
+  private int randIntBetween(Random rand, int origin, int bound) {
+    return rand.nextInt(bound - origin) + origin;
+  }
+
   public InterchangeResult call() {
     // Dummy interchange, to be edited later.
     Interchange interchange = new Interchange(
@@ -47,24 +51,24 @@ public class BestRandom2ICalculator extends InterchangeCalculator {
 
       for (int i = 0; i < numAttempts; i++) {
 
-        interchange.insertionList1.get(0).fromCustomerIdx = rand.nextInt(1,
+        interchange.insertionList1.get(0).fromCustomerIdx = randIntBetween(rand, 1,
             route1.customers.size() - 1);
-        interchange.insertionList1.get(0).toCustomerIdx = rand.nextInt(1,
+        interchange.insertionList1.get(0).toCustomerIdx = randIntBetween(rand, 1,
             route2.customers.size() - 1);
 
-        interchange.insertionList1.get(1).fromCustomerIdx = rand.nextInt(1,
+        interchange.insertionList1.get(1).fromCustomerIdx = randIntBetween(rand, 1,
             route1.customers.size() - 1);
-        interchange.insertionList1.get(1).toCustomerIdx = rand.nextInt(1,
+        interchange.insertionList1.get(1).toCustomerIdx = randIntBetween(rand, 1,
             route2.customers.size() - 1);
 
-        interchange.insertionList2.get(0).fromCustomerIdx = rand.nextInt(1,
+        interchange.insertionList2.get(0).fromCustomerIdx = randIntBetween(rand, 1,
             route2.customers.size() - 1);
-        interchange.insertionList2.get(0).toCustomerIdx = rand.nextInt(1,
+        interchange.insertionList2.get(0).toCustomerIdx = randIntBetween(rand, 1,
             route1.customers.size() - 1);
 
-        interchange.insertionList2.get(1).fromCustomerIdx = rand.nextInt(1,
+        interchange.insertionList2.get(1).fromCustomerIdx = randIntBetween(rand, 1,
             route2.customers.size() - 1);
-        interchange.insertionList2.get(1).toCustomerIdx = rand.nextInt(1,
+        interchange.insertionList2.get(1).toCustomerIdx = randIntBetween(rand, 1,
             route1.customers.size() - 1);
 
         if (interchange.insertionList1.get(0).fromCustomerIdx == interchange.insertionList1.get(
