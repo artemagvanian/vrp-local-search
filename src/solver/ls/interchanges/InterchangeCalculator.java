@@ -12,19 +12,23 @@ public abstract class InterchangeCalculator implements Callable<InterchangeResul
   protected final RouteList routeList;
   protected final RouteList incumbent;
   protected final double excessCapacityPenaltyCoefficient;
+  protected final double customerUsePenaltyCoefficient;
   protected final List<TabuItem> shortTermMemory;
   protected final boolean firstBestFirst;
+  protected final int currentIteration;
   protected Interchange bestInterchange;
   protected double bestObjective = Double.POSITIVE_INFINITY;
 
   public InterchangeCalculator(RouteList routeList, RouteList incumbent,
-      double excessCapacityPenaltyCoefficient, List<TabuItem> shortTermMemory,
-      boolean firstBestFirst) {
+      double excessCapacityPenaltyCoefficient, double customerUsePenaltyCoefficient,
+      List<TabuItem> shortTermMemory, boolean firstBestFirst, int currentIteration) {
     this.routeList = routeList;
     this.incumbent = incumbent;
     this.excessCapacityPenaltyCoefficient = excessCapacityPenaltyCoefficient;
+    this.customerUsePenaltyCoefficient = customerUsePenaltyCoefficient;
     this.shortTermMemory = shortTermMemory;
     this.firstBestFirst = firstBestFirst;
+    this.currentIteration = currentIteration;
   }
 
   protected boolean isCustomerTabu(int routeIdx, int customerIdx) {

@@ -23,9 +23,13 @@ public class SLSParams {
    */
   public final boolean firstBestFirst = false;
   /**
-   * Randomly optimizes the incumbent with kOptimize chance.
+   * Randomly optimizes the incumbent with some chance.
    */
   public final double optimizationChance = 0.1;
+  /**
+   * Randomly optimizes the current route list with some chance.
+   */
+  public final double randomOptimizationChance = 0.01;
   /**
    * How many feasible/infeasible assignments we should have to start changing the EC penalty.
    */
@@ -49,32 +53,32 @@ public class SLSParams {
   /**
    * How many iterations of steady incumbent has to pass before we start changing the CU penalty.
    */
-  public final int customerUsePenaltyIncreaseThreshold = 10;
+  public final int customerUsePenaltyIncreaseThreshold = 50;
   /**
    * Multiplier for the CU penalty coefficient.
    */
-  public final double customerUsePenaltyMultiplier = 1.25;
+  public final double customerUsePenaltyMultiplier = 1.01;
   /**
    * Minimum CU penalty.
    */
-  public final double customerUseMinPenalty = 10;
+  public final double customerUseMinPenalty = 1;
   /**
    * Maximum CU penalty.
    */
-  public final double customerUseMaxPenalty = 10000;
+  public final double customerUseMaxPenalty = 2;
   /**
    * Base CU penalty.
    */
-  public final double customerUseBasePenalty = 10;
+  public final double customerUseBasePenalty = 1;
   /**
    * How many iterations of steady incumbent has to pass before we start changing the neighborhood
    * size.
    */
-  public final int largeNeighborhoodSizeIncreaseThreshold = 100;
+  public final int largeNeighborhoodSizeIncreaseThreshold = 50;
   /**
    * By how much to increase the neighborhood size once the incumbent does not change.
    */
-  public final double largeNeighborhoodSizeMultiplier = 1.01;
+  public final double largeNeighborhoodSizeMultiplier = 1;
   /**
    * Minimum number of tries for 2-interchanges.
    */
@@ -82,11 +86,11 @@ public class SLSParams {
   /**
    * Maximum number of tries for 2-interchanges.
    */
-  public final int largeNeighborhoodMaxSize = 1000000;
+  public final int largeNeighborhoodMaxSize = 1000;
   /**
    * Base number of tries for 2-interchanges.
    */
-  public final int largeNeighborhoodBaseSize = 100000;
+  public final int largeNeighborhoodBaseSize = 1000;
 
   public SLSParams() {
   }

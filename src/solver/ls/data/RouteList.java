@@ -3,22 +3,31 @@ package solver.ls.data;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 public class RouteList implements Cloneable {
 
   private final double[][] distances;
   private final int[] demandOfCustomer;
   private final int vehicleCapacity;
+  private final Map<Integer, Integer> longTermMemory;
+  private final int numCustomers;
   public List<Route> routes;
+
   public double length;
+  private int excessCapacity;
 
   public RouteList(List<Route> routes, double length, double[][] distances, int[] demandOfCustomer,
-      int vehicleCapacity) {
+      int vehicleCapacity, Map<Integer, Integer> longTermMemory, int numCustomers,
+      int excessCapacity) {
     this.routes = routes;
     this.length = length;
     this.distances = distances;
     this.demandOfCustomer = demandOfCustomer;
     this.vehicleCapacity = vehicleCapacity;
+    this.longTermMemory = longTermMemory;
+    this.numCustomers = numCustomers;
+    this.excessCapacity = excessCapacity;
   }
 
   @Override
@@ -65,6 +74,22 @@ public class RouteList implements Cloneable {
     } else {
       throw new IllegalArgumentException("Can only process (1,0), (1,1), (2,2) -interchanges.");
     }
+  }
+
+  public double calculateObjective(Interchange interchange,
+      double excessCapacityPenaltyCoefficient, double customerUsePenaltyCoefficient,
+      int currentIteration) {
+    double customerUsePenalty = 0;
+    for (Insertion insertion : interchange.insertionList1) {
+      customerUsePenalty += longTermMemory.get(insertion.fromCustomerIdx);
+    }
+    for (Insertion insertion : interchange.insertionList2) {
+      customerUsePenalty += longTermMemory.get(insertion.fromCustomerIdx);
+    }
+    return length + calculateEdgeDelta(interchange)
+        + excessCapacityPenaltyCoefficient * calculateExcessCapacity(interchange)
+        + customerUsePenaltyCoefficient * Math.sqrt(numCustomers) * customerUsePenalty
+        / currentIteration;
   }
 
   private double calculateSwapDelta(Route route1, Route route2, Interchange interchange) {
@@ -157,50 +182,44 @@ public class RouteList implements Cloneable {
     int newCustomerDemandRoute2 = route2.demand;
 
     for (Insertion insertion : interchange.insertionList1) {
-      newCustomerDemandRoute1 -= demandOfCustomer[route1.customers.get(insertion.fromCustomerIdx)];
-      newCustomerDemandRoute2 += demandOfCustomer[route1.customers.get(insertion.fromCustomerIdx)];
+      int customer = route1.customers.get(insertion.fromCustomerIdx);
+      newCustomerDemandRoute1 -= demandOfCustomer[customer];
+      newCustomerDemandRoute2 += demandOfCustomer[customer];
     }
 
     for (Insertion insertion : interchange.insertionList2) {
-      newCustomerDemandRoute2 -= demandOfCustomer[route2.customers.get(insertion.fromCustomerIdx)];
-      newCustomerDemandRoute1 += demandOfCustomer[route2.customers.get(insertion.fromCustomerIdx)];
+      int customer = route2.customers.get(insertion.fromCustomerIdx);
+      newCustomerDemandRoute2 -= demandOfCustomer[customer];
+      newCustomerDemandRoute1 += demandOfCustomer[customer];
     }
 
-    int excessCapacity = 0;
-    // for each vehicle
-    for (int routeIdx = 0; routeIdx < routes.size(); routeIdx++) {
-      int currentCustomerDemand;
-      if (routeIdx == interchange.routeIdx1) {
-        currentCustomerDemand = newCustomerDemandRoute1;
-      } else if (routeIdx == interchange.routeIdx2) {
-        currentCustomerDemand = newCustomerDemandRoute2;
-      } else {
-        currentCustomerDemand = routes.get(routeIdx).demand;
-      }
-      // only if its over what it should be, add amount over
-      if (vehicleCapacity < currentCustomerDemand) {
-        excessCapacity += currentCustomerDemand - vehicleCapacity;
-      }
-    }
+    int excessCapacityDelta =
+        Math.max(0, newCustomerDemandRoute1 - vehicleCapacity)
+            + Math.max(0, newCustomerDemandRoute2 - vehicleCapacity)
+            - Math.max(0, route1.demand - vehicleCapacity)
+            - Math.max(0, route2.demand - vehicleCapacity);
 
-    return excessCapacity;
+    return excessCapacity + excessCapacityDelta;
   }
 
   public void perform(Interchange interchange) {
     length += calculateEdgeDelta(interchange);
+    excessCapacity = calculateExcessCapacity(interchange);
 
     Route route1 = routes.get(interchange.routeIdx1);
     Route route2 = routes.get(interchange.routeIdx2);
 
     // Update customer demands for the routes.
     for (Insertion insertion : interchange.insertionList1) {
-      route1.demand -= demandOfCustomer[route1.customers.get(insertion.fromCustomerIdx)];
-      route2.demand += demandOfCustomer[route1.customers.get(insertion.fromCustomerIdx)];
+      int customer = route1.customers.get(insertion.fromCustomerIdx);
+      route1.demand -= demandOfCustomer[customer];
+      route2.demand += demandOfCustomer[customer];
     }
 
     for (Insertion insertion : interchange.insertionList2) {
-      route2.demand -= demandOfCustomer[route2.customers.get(insertion.fromCustomerIdx)];
-      route1.demand += demandOfCustomer[route2.customers.get(insertion.fromCustomerIdx)];
+      int customer = route2.customers.get(insertion.fromCustomerIdx);
+      route2.demand -= demandOfCustomer[customer];
+      route1.demand += demandOfCustomer[customer];
     }
 
     performRawInterchange(route1, route2, interchange.insertionList1, interchange.insertionList2);

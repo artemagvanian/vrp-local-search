@@ -94,6 +94,13 @@ public class VRPInstanceSLS extends VRPInstance {
     // Copy parameters.
     this.params = params;
     this.watch = watch;
+    // Initialize helpers.
+    shortTermMemory = new ArrayList<>();
+    longTermMemory = new HashMap<>();
+    for (int i = 0; i < numCustomers; i++) {
+      longTermMemory.put(i, 0);
+    }
+    rand = new Random();
     // Instantiate coefficients.
     largeNeighborhoodSize = params.largeNeighborhoodBaseSize;
     excessCapacityPenaltyCoefficient = params.excessCapacityBasePenalty;
@@ -106,13 +113,6 @@ public class VRPInstanceSLS extends VRPInstance {
     }
     incumbent = routeList.clone();
     objective = incumbent.length;
-    // Initialize helpers.
-    shortTermMemory = new ArrayList<>();
-    longTermMemory = new HashMap<>();
-    for (int i = 0; i < numCustomers; i++) {
-      longTermMemory.put(i, 0);
-    }
-    rand = new Random();
     // Objective of the initial solution.
     System.out.println("Initial objective: " + objective);
     // Perform search for a given number of iterations.
@@ -138,23 +138,30 @@ public class VRPInstanceSLS extends VRPInstance {
       // Calculate both best insertion and best swap.
       bestInsertion = searchNeighborhood(
           (routeIdx1) -> new BestInsertionCalculator(routeList, incumbent,
-              excessCapacityPenaltyCoefficient, shortTermMemory, params.firstBestFirst, routeIdx1));
+              excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration,
+              shortTermMemory, params.firstBestFirst, routeIdx1));
       bestSwap = searchNeighborhood(
           (routeIdx1) -> new BestSwapCalculator(routeList, incumbent,
-              excessCapacityPenaltyCoefficient, shortTermMemory, params.firstBestFirst, routeIdx1));
+              excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration,
+              shortTermMemory, params.firstBestFirst, routeIdx1));
       best2Interchange = searchNeighborhood(
           (routeIdx1) -> new BestRandom2ICalculator(routeList, incumbent,
-              excessCapacityPenaltyCoefficient, shortTermMemory, params.firstBestFirst, numVehicles,
-              routeIdx1));
+              excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, shortTermMemory,
+              params.firstBestFirst, routeIdx1, largeNeighborhoodSize, currentIteration));
 
       // Get insertion objectives, if possible.
       double insertionObjective =
-          bestInsertion == null ? Double.POSITIVE_INFINITY : calculateObjective(bestInsertion);
+          bestInsertion == null ? Double.POSITIVE_INFINITY
+              : routeList.calculateObjective(bestInsertion, excessCapacityPenaltyCoefficient,
+                  customerUsePenaltyCoefficient, currentIteration);
       double swapObjective =
-          bestSwap == null ? Double.POSITIVE_INFINITY : calculateObjective(bestSwap);
+          bestSwap == null ? Double.POSITIVE_INFINITY
+              : routeList.calculateObjective(bestSwap, excessCapacityPenaltyCoefficient,
+                  customerUsePenaltyCoefficient, currentIteration);
       double twoInterchangeObjective =
           best2Interchange == null ? Double.POSITIVE_INFINITY
-              : calculateObjective(best2Interchange);
+              : routeList.calculateObjective(best2Interchange, excessCapacityPenaltyCoefficient,
+                  customerUsePenaltyCoefficient, currentIteration);
 
       // Route indices of the interchange, so we could optimize those later.
       int routeIdx1 = 0;
@@ -238,13 +245,19 @@ public class VRPInstanceSLS extends VRPInstance {
 
       // Update excess capacity penalty, if necessary.
       if (lastFeasibleIterations > params.excessCapacityPenaltyIncreaseThreshold) {
-        excessCapacityPenaltyCoefficient = Math.min(
-            excessCapacityPenaltyCoefficient / params.excessCapacityPenaltyMultiplier,
-            params.excessCapacityMaxPenalty);
-      } else if (lastFeasibleIterations < -params.excessCapacityPenaltyIncreaseThreshold) {
         excessCapacityPenaltyCoefficient = Math.max(
-            excessCapacityPenaltyCoefficient * params.excessCapacityPenaltyMultiplier,
+            excessCapacityPenaltyCoefficient / params.excessCapacityPenaltyMultiplier,
             params.excessCapacityMinPenalty);
+      } else if (lastFeasibleIterations < -params.excessCapacityPenaltyIncreaseThreshold) {
+        excessCapacityPenaltyCoefficient = Math.min(
+            excessCapacityPenaltyCoefficient * params.excessCapacityPenaltyMultiplier,
+            params.excessCapacityMaxPenalty);
+      }
+
+      if (rand.nextDouble()
+          < params.randomOptimizationChance) { // kOptimize chance of optimization.
+        routeList.length += routeList.routes.get(rand.nextInt(routeList.routes.size()))
+            .optimize(distances, params.optimizationTimeout);
       }
 
       // Log the data to the console.
@@ -330,27 +343,14 @@ public class VRPInstanceSLS extends VRPInstance {
         + params.minimumTabuTenure;
   }
 
-  private double calculateObjective(Interchange interchange) {
-    double customerUsePenalty = 0;
-    for (Insertion insertion : interchange.insertionList1) {
-      customerUsePenalty += longTermMemory.get(insertion.fromCustomerIdx);
-    }
-    for (Insertion insertion : interchange.insertionList2) {
-      customerUsePenalty += longTermMemory.get(insertion.fromCustomerIdx);
-    }
-    return routeList.length + routeList.calculateEdgeDelta(interchange)
-        + excessCapacityPenaltyCoefficient * routeList.calculateExcessCapacity(interchange)
-        + customerUsePenaltyCoefficient * Math.sqrt(numCustomers) * customerUsePenalty;
-  }
-
   /**
    * For each vehicle's route, checks how much over capacity it is.
    *
    * @param routeList routes to calculate the excess capacity for.
    * @return excess capacity.
    */
-  public double calculateExcessCapacity(RouteList routeList) {
-    double excessCapacity = 0;
+  public int calculateExcessCapacity(RouteList routeList) {
+    int excessCapacity = 0;
     // for each vehicle
     for (Route route : routeList.routes) {
       // only if its over what it should be, add amount over
@@ -428,7 +428,7 @@ public class VRPInstanceSLS extends VRPInstance {
         }
 
         return new RouteList(initialRoutes, initialRoutesLength, distances, demandOfCustomer,
-            vehicleCapacity);
+            vehicleCapacity, longTermMemory, numCustomers, 0);
       } else {
         throw new IllegalArgumentException("Infeasible BPP model.");
       }

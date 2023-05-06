@@ -14,10 +14,10 @@ public class BestSwapCalculator extends InterchangeCalculator {
   private final int routeIdx1;
 
   public BestSwapCalculator(RouteList routeList, RouteList incumbent,
-      double excessCapacityPenaltyCoefficient, List<TabuItem> shortTermMemory,
-      boolean firstBestFirst, int routeIdx1) {
-    super(routeList, incumbent, excessCapacityPenaltyCoefficient, shortTermMemory,
-        firstBestFirst);
+      double excessCapacityPenaltyCoefficient, double customerUsePenaltyCoefficient,
+      int currentIteration, List<TabuItem> shortTermMemory, boolean firstBestFirst, int routeIdx1) {
+    super(routeList, incumbent, excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient,
+        shortTermMemory, firstBestFirst, currentIteration);
     this.routeIdx1 = routeIdx1;
   }
 
@@ -50,12 +50,10 @@ public class BestSwapCalculator extends InterchangeCalculator {
                 customer2IdxTo++) {
               interchange.insertionList2.get(0).toCustomerIdx = customer2IdxTo;
 
-              double newTotalLength =
-                  routeList.length + routeList.calculateEdgeDelta(interchange);
               double excessCapacity = routeList.calculateExcessCapacity(interchange);
-
-              double newObjective =
-                  newTotalLength + excessCapacity * excessCapacityPenaltyCoefficient;
+              double newObjective = routeList.calculateObjective(interchange,
+                  excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient,
+                  currentIteration);
 
               // If we are better than what we have now.
               if (newObjective < bestObjective) {

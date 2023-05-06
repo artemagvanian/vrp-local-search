@@ -10,13 +10,14 @@ import solver.ls.data.RouteList;
 import solver.ls.data.TabuItem;
 
 public class BestInsertionCalculator extends InterchangeCalculator {
+
   private final int routeIdx1;
 
   public BestInsertionCalculator(RouteList routeList, RouteList incumbent,
-      double excessCapacityPenaltyCoefficient, List<TabuItem> shortTermMemory,
-      boolean firstBestFirst, int routeIdx1) {
-    super(routeList, incumbent, excessCapacityPenaltyCoefficient, shortTermMemory,
-        firstBestFirst);
+      double excessCapacityPenaltyCoefficient, double customerUsePenaltyCoefficient,
+      int currentIteration, List<TabuItem> shortTermMemory, boolean firstBestFirst, int routeIdx1) {
+    super(routeList, incumbent, excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient,
+        shortTermMemory, firstBestFirst, currentIteration);
     this.routeIdx1 = routeIdx1;
   }
 
@@ -42,12 +43,11 @@ public class BestInsertionCalculator extends InterchangeCalculator {
         for (int customerIdxTo = 1; customerIdxTo < route2.customers.size(); customerIdxTo++) {
           interchange.insertionList1.get(0).toCustomerIdx = customerIdxTo;
 
-          double newTotalLength =
-              routeList.length + routeList.calculateEdgeDelta(interchange);
           double excessCapacity = routeList.calculateExcessCapacity(interchange);
 
           // Calculate objective function and check whether it is better than the current.
-          double newObjective = newTotalLength + excessCapacity * excessCapacityPenaltyCoefficient;
+          double newObjective = routeList.calculateObjective(interchange,
+              excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration);
           if (newObjective < bestObjective) {
             // Check whether the current customer is in the tabu list, account for aspiration.
             if (!isCustomerTabu(routeIdx1, customerIdxFrom) ||

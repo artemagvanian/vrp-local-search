@@ -16,10 +16,11 @@ public class BestRandom2ICalculator extends InterchangeCalculator {
   private final int numAttempts;
 
   public BestRandom2ICalculator(RouteList routeList, RouteList incumbent,
-      double excessCapacityPenaltyCoefficient, List<TabuItem> shortTermMemory,
-      boolean firstBestFirst, int routeIdx1, int numAttempts) {
-    super(routeList, incumbent, excessCapacityPenaltyCoefficient, shortTermMemory,
-        firstBestFirst);
+      double excessCapacityPenaltyCoefficient, double customerUsePenaltyCoefficient,
+      List<TabuItem> shortTermMemory, boolean firstBestFirst, int routeIdx1, int numAttempts,
+      int currentIteration) {
+    super(routeList, incumbent, excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient,
+        shortTermMemory, firstBestFirst, currentIteration);
     this.routeIdx1 = routeIdx1;
     this.numAttempts = numAttempts;
   }
@@ -77,12 +78,9 @@ public class BestRandom2ICalculator extends InterchangeCalculator {
           continue;
         }
 
-        double newTotalLength =
-            routeList.length + routeList.calculateEdgeDelta(interchange);
         double excessCapacity = routeList.calculateExcessCapacity(interchange);
-
-        double newObjective =
-            newTotalLength + excessCapacity * excessCapacityPenaltyCoefficient;
+        double newObjective = routeList.calculateObjective(interchange,
+            excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration);
 
         // If we are better than what we have now.
         if (newObjective < bestObjective) {
