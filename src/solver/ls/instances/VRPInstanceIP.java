@@ -10,12 +10,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class VRPInstanceComplete extends VRPInstance {
+public class VRPInstanceIP extends VRPInstance {
 
   public List<List<Integer>> routes;       // routes for each of the trucks
 
 
-  public VRPInstanceComplete(String fileName) {
+  public VRPInstanceIP(String fileName) {
     super(fileName);
   }
 

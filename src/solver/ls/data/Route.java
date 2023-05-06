@@ -44,10 +44,8 @@ public class Route implements Cloneable {
 
   public double optimize(double[][] distances, double timeout) {
     try (IloCplex tspModel = new IloCplex()) {
-      /*
       tspModel.setOut(null);
       tspModel.setWarning(null);
-       */
       tspModel.setParam(Param.TimeLimit, timeout);
 
       int numCustomers = customers.size() - 1;

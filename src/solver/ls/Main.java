@@ -9,9 +9,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Scanner;
 import solver.ls.data.Route;
-import solver.ls.instances.VRPInstanceIncomplete;
+import solver.ls.instances.SLSParams;
+import solver.ls.instances.VRPInstanceSLS;
 import solver.ls.utils.Timer;
-// import java.util.stream.IntStream;
 
 public class Main {
 
@@ -27,8 +27,10 @@ public class Main {
     System.out.println("Instance: " + input);
 
     Timer watch = new Timer();
+    SLSParams params = new SLSParams();
+
     watch.start();
-    VRPInstanceIncomplete incompleteInstance = new VRPInstanceIncomplete(input, watch);
+    VRPInstanceSLS incompleteInstance = new VRPInstanceSLS(input, watch, params);
     watch.stop();
 
     double excessCapacity = incompleteInstance.calculateExcessCapacity(

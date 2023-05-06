@@ -5,12 +5,15 @@ import ilog.concert.IloLinearNumExpr;
 import ilog.concert.IloNumVar;
 import ilog.cplex.IloCplex;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import solver.ls.data.Insertion;
 import solver.ls.data.Interchange;
 import solver.ls.data.InterchangeResult;
 import solver.ls.data.Route;
@@ -19,50 +22,24 @@ import solver.ls.data.TabuItem;
 import solver.ls.interchanges.BestInsertionCalculator;
 import solver.ls.interchanges.BestRandom2ICalculator;
 import solver.ls.interchanges.BestSwapCalculator;
+import solver.ls.interchanges.InterchangeCalculator;
+import solver.ls.interchanges.InterchangePerRoute;
 import solver.ls.utils.Timer;
 
-public class VRPInstanceIncomplete extends VRPInstance {
+public class VRPInstanceSLS extends VRPInstance {
 
   /**
-   * Number of iterations to run the search for.
+   * Solver parameters.
    */
-  private final int maxIterations = 10000;
-  /**
-   * The minimum value tabu tenure can take.
-   */
-  private final int minimumTabuTenure = 5;
-  /**
-   * The maximum value tabu tenure can take.
-   */
-  private final int maximumTabuTenure = 10;
-  /**
-   * Timeout to optimize the solution (seconds).
-   */
-  private final double optimizationTimeout = 10;
-  /**
-   * Allowed solution time (seconds).
-   */
-  private final double timeout = 300;
-  /**
-   * Increase greediness by grabbing the first solution that is better than the incumbent.
-   */
-  private final boolean firstBestFirst = false;
-  /**
-   * Randomly optimizes the incumbent with kOptimize chance.
-   */
-  private final double kOptimize = 0.25;
-  /**
-   * Randomly optimizes the incumbent with 1/kOptimize chance.
-   */
-  private final double penaltyMultiplier = 1.5;
-  /**
-   * How many feasible/infeasible assignments we should have to start changing the penalty.
-   */
-  private final int feasibilityBound = 10;
+  private final SLSParams params;
   /**
    * Memory list to keep the recently moved customers.
    */
   private final List<TabuItem> shortTermMemory;
+  /**
+   * Map between the customer and the number of interchanges it participated in.
+   */
+  private final Map<Integer, Integer> longTermMemory;
   /**
    * Random number generator for the instance.
    */
@@ -76,23 +53,6 @@ public class VRPInstanceIncomplete extends VRPInstance {
    */
   private final ExecutorService executor = Executors.newFixedThreadPool(16);
   /**
-   * How many iterations of steady incumbent has to pass before we start changing the neighborhood
-   * size.
-   */
-  private final int twoNeighborhoodSizeIncreaseThreshold = 100;
-  /**
-   * By how much to increase the neighborhood size once the incumbent does not change.
-   */
-  private final double twoNeighborhoodSizeMultiplier = 1.05;
-  /**
-   * Minimum number of tries for 2-interchanges.
-   */
-  private final int twoNeighborhoodMinSize = 1000;
-  /**
-   * Maximum number of tries for 2-interchanges.
-   */
-  private final int twoNeighborhoodMaxSize = 100000;
-  /**
    * Current best solution, with no excess capacity.
    */
   public RouteList incumbent;
@@ -105,40 +65,53 @@ public class VRPInstanceIncomplete extends VRPInstance {
    */
   public int currentIteration = 0;
   /**
+   * Customer use penalty coefficient for long-term memory.
+   */
+  private double customerUsePenaltyCoefficient;
+  /**
    * Current best objective, calculated as specified by the objective function.
    */
   private double objective;
   /**
    * Initial penalty coefficient for the objective function.
    */
-  private double penaltyCoefficient = 1;
+  private double excessCapacityPenaltyCoefficient;
   /**
    * How many feasible/infeasible assignments we had.
    */
-  private int numLastFeasible = 1;
+  private int lastFeasibleIterations = 1;
   /**
    * How many iterations has passed since the last incumbent update.
    */
-  private int numSinceLastIncumbent = 0;
+  private int iterationsSinceLastIncumbent = 0;
   /**
    * Number of tries for 2-interchanges.
    */
-  private int twoNeighborhoodSize = 1000;
+  private int largeNeighborhoodSize;
 
-  public VRPInstanceIncomplete(String fileName, Timer watch) {
+  public VRPInstanceSLS(String fileName, Timer watch, SLSParams params) {
     super(fileName);
     // Copy parameters.
+    this.params = params;
     this.watch = watch;
+    // Instantiate coefficients.
+    largeNeighborhoodSize = params.largeNeighborhoodBaseSize;
+    excessCapacityPenaltyCoefficient = params.excessCapacityBasePenalty;
+    customerUsePenaltyCoefficient = params.customerUseBasePenalty;
     // Generate the initial solution, initialize variables.
     routeList = generateInitialSolution();
     // Optimize routes.
     for (Route route : routeList.routes) {
-      routeList.length += route.optimize(distances, optimizationTimeout);
+      routeList.length += route.optimize(distances, params.optimizationTimeout);
     }
     incumbent = routeList.clone();
-    objective = calculateObjective(incumbent.length, 0);
+    objective = incumbent.length;
     // Initialize helpers.
     shortTermMemory = new ArrayList<>();
+    longTermMemory = new HashMap<>();
+    for (int i = 0; i < numCustomers; i++) {
+      longTermMemory.put(i, 0);
+    }
     rand = new Random();
     // Objective of the initial solution.
     System.out.println("Initial objective: " + objective);
@@ -160,25 +133,28 @@ public class VRPInstanceIncomplete extends VRPInstance {
     currentIteration = 0;
 
     // Keep going for a fixed number of iterations.
-    while (currentIteration < maxIterations && watch.getTime() < timeout - 5) {
+    while (watch.getTime() < params.instanceTimeout - 5) {
       currentIteration++;
       // Calculate both best insertion and best swap.
-      bestInsertion = findBestInsertion();
-      bestSwap = findBestSwap();
-      best2Interchange = findBest2Interchange();
+      bestInsertion = searchNeighborhood(
+          (routeIdx1) -> new BestInsertionCalculator(routeList, incumbent,
+              excessCapacityPenaltyCoefficient, shortTermMemory, params.firstBestFirst, routeIdx1));
+      bestSwap = searchNeighborhood(
+          (routeIdx1) -> new BestSwapCalculator(routeList, incumbent,
+              excessCapacityPenaltyCoefficient, shortTermMemory, params.firstBestFirst, routeIdx1));
+      best2Interchange = searchNeighborhood(
+          (routeIdx1) -> new BestRandom2ICalculator(routeList, incumbent,
+              excessCapacityPenaltyCoefficient, shortTermMemory, params.firstBestFirst, numVehicles,
+              routeIdx1));
 
       // Get insertion objectives, if possible.
       double insertionObjective =
-          bestInsertion == null ? Double.POSITIVE_INFINITY : calculateObjective(
-              routeList.length + routeList.calculateEdgeDelta(bestInsertion),
-              routeList.calculateExcessCapacity(bestInsertion));
-      double swapObjective = bestSwap == null ? Double.POSITIVE_INFINITY : calculateObjective(
-          routeList.length + routeList.calculateEdgeDelta(bestSwap),
-          routeList.calculateExcessCapacity(bestSwap));
+          bestInsertion == null ? Double.POSITIVE_INFINITY : calculateObjective(bestInsertion);
+      double swapObjective =
+          bestSwap == null ? Double.POSITIVE_INFINITY : calculateObjective(bestSwap);
       double twoInterchangeObjective =
-          best2Interchange == null ? Double.POSITIVE_INFINITY : calculateObjective(
-              routeList.length + routeList.calculateEdgeDelta(best2Interchange),
-              routeList.calculateExcessCapacity(best2Interchange));
+          best2Interchange == null ? Double.POSITIVE_INFINITY
+              : calculateObjective(best2Interchange);
 
       // Route indices of the interchange, so we could optimize those later.
       int routeIdx1 = 0;
@@ -187,55 +163,21 @@ public class VRPInstanceIncomplete extends VRPInstance {
       if (bestInsertion != null || bestSwap != null || best2Interchange != null) {
         // If current best insertion is better.
         if (insertionObjective <= swapObjective && insertionObjective <= twoInterchangeObjective) {
-          System.out.println("Performing action: " + bestInsertion);
-          objective = insertionObjective;
-          // Add the customer to the short-term memory.
-          shortTermMemory.add(new TabuItem(
-              routeList.routes.get(bestInsertion.routeIdx1).customers.get(
-                  bestInsertion.insertionList1.get(0).fromCustomerIdx),
-              currentIteration + getRandomTabuTenure()));
+          assert bestInsertion != null;
+          updateInterchange(bestInsertion, insertionObjective);
           routeIdx1 = bestInsertion.routeIdx1;
           routeIdx2 = bestInsertion.routeIdx2;
-          routeList.perform(bestInsertion);
         } else if (swapObjective <= insertionObjective
             && swapObjective <= twoInterchangeObjective) {
-          System.out.println("Performing action: " + bestSwap);
-          objective = swapObjective;
-          // Add the customers to the short-term memory.
-          shortTermMemory.add(new TabuItem(routeList.routes.get(bestSwap.routeIdx1).customers.get(
-              bestSwap.insertionList1.get(0).fromCustomerIdx),
-              currentIteration + getRandomTabuTenure()));
-          shortTermMemory.add(new TabuItem(routeList.routes.get(bestSwap.routeIdx2).customers.get(
-              bestSwap.insertionList2.get(0).fromCustomerIdx),
-              currentIteration + getRandomTabuTenure()));
+          assert bestSwap != null;
+          updateInterchange(bestSwap, insertionObjective);
           routeIdx1 = bestSwap.routeIdx1;
           routeIdx2 = bestSwap.routeIdx2;
-          // Perform the actual swap.
-          routeList.perform(bestSwap);
         } else {
-          System.out.println("Performing action: " + best2Interchange);
-          objective = twoInterchangeObjective;
-          // Add the customers to the short-term memory.
-          shortTermMemory.add(
-              new TabuItem(routeList.routes.get(best2Interchange.routeIdx1).customers.get(
-                  best2Interchange.insertionList1.get(0).fromCustomerIdx),
-                  currentIteration + getRandomTabuTenure()));
-          shortTermMemory.add(
-              new TabuItem(routeList.routes.get(best2Interchange.routeIdx2).customers.get(
-                  best2Interchange.insertionList2.get(0).fromCustomerIdx),
-                  currentIteration + getRandomTabuTenure()));
-          shortTermMemory.add(
-              new TabuItem(routeList.routes.get(best2Interchange.routeIdx1).customers.get(
-                  best2Interchange.insertionList1.get(1).fromCustomerIdx),
-                  currentIteration + getRandomTabuTenure()));
-          shortTermMemory.add(
-              new TabuItem(routeList.routes.get(best2Interchange.routeIdx2).customers.get(
-                  best2Interchange.insertionList2.get(1).fromCustomerIdx),
-                  currentIteration + getRandomTabuTenure()));
+          assert best2Interchange != null;
+          updateInterchange(best2Interchange, insertionObjective);
           routeIdx1 = best2Interchange.routeIdx1;
           routeIdx2 = best2Interchange.routeIdx2;
-          // Perform the actual swap.
-          routeList.perform(best2Interchange);
         }
       }
 
@@ -245,71 +187,110 @@ public class VRPInstanceIncomplete extends VRPInstance {
 
       // Check whether we should update the incumbent.
       if (routeList.length < incumbent.length && calculateExcessCapacity(routeList) == 0) {
-        if (rand.nextDouble() < kOptimize) { // kOptimize chance of optimization.
+        if (rand.nextDouble() < params.optimizationChance) { // kOptimize chance of optimization.
           routeList.length += routeList.routes.get(routeIdx1)
-              .optimize(distances, optimizationTimeout);
+              .optimize(distances, params.optimizationTimeout);
           routeList.length += routeList.routes.get(routeIdx2)
-              .optimize(distances, optimizationTimeout);
+              .optimize(distances, params.optimizationTimeout);
         }
         incumbent = routeList.clone();
-        numSinceLastIncumbent = 0;
+        iterationsSinceLastIncumbent = 0;
       } else {
-        numSinceLastIncumbent++;
+        iterationsSinceLastIncumbent++;
       }
 
-      if (numSinceLastIncumbent > twoNeighborhoodSizeIncreaseThreshold) {
-        twoNeighborhoodSize = Math.min((int) (twoNeighborhoodSize * twoNeighborhoodSizeMultiplier),
-            twoNeighborhoodMaxSize);
-        if (rand.nextDouble() < kOptimize) { // kOptimize chance of optimization.
-          routeList.length += routeList.routes.get(rand.nextInt(routeList.routes.size()))
-              .optimize(distances, optimizationTimeout);
-        }
+      // Increase the neighborhood size, if necessary.
+      if (iterationsSinceLastIncumbent > params.largeNeighborhoodSizeIncreaseThreshold) {
+        largeNeighborhoodSize = Math.min(
+            (int) (largeNeighborhoodSize * params.largeNeighborhoodSizeMultiplier),
+            params.largeNeighborhoodMaxSize);
       } else {
-        twoNeighborhoodSize = Math.max((int) (twoNeighborhoodSize / twoNeighborhoodSizeMultiplier),
-            twoNeighborhoodMinSize);
+        largeNeighborhoodSize = Math.max(
+            (int) (largeNeighborhoodSize / params.largeNeighborhoodSizeMultiplier),
+            params.largeNeighborhoodMinSize);
+      }
+
+      // Increase the customer use penalty, if necessary.
+      if (iterationsSinceLastIncumbent > params.customerUsePenaltyIncreaseThreshold) {
+        customerUsePenaltyCoefficient = Math.min(
+            customerUsePenaltyCoefficient * params.customerUsePenaltyMultiplier,
+            params.customerUseMaxPenalty);
+      } else {
+        customerUsePenaltyCoefficient = Math.max(
+            customerUsePenaltyCoefficient / params.customerUsePenaltyMultiplier,
+            params.customerUseMinPenalty);
       }
 
       // Adjust the number of last feasible solutions.
       if (calculateExcessCapacity(routeList) == 0) {
-        if (numLastFeasible > 0) {
-          numLastFeasible++;
+        if (lastFeasibleIterations > 0) {
+          lastFeasibleIterations++;
         } else {
-          numLastFeasible = 1;
+          lastFeasibleIterations = 1;
         }
       } else {
-        if (numLastFeasible < 0) {
-          numLastFeasible--;
+        if (lastFeasibleIterations < 0) {
+          lastFeasibleIterations--;
         } else {
-          numLastFeasible = -1;
+          lastFeasibleIterations = -1;
         }
       }
 
-      // Update penalty coefficient.
-      if (numLastFeasible > feasibilityBound) {
-        penaltyCoefficient /= penaltyMultiplier;
-      } else if (numLastFeasible < -feasibilityBound) {
-        penaltyCoefficient *= penaltyMultiplier;
+      // Update excess capacity penalty, if necessary.
+      if (lastFeasibleIterations > params.excessCapacityPenaltyIncreaseThreshold) {
+        excessCapacityPenaltyCoefficient = Math.min(
+            excessCapacityPenaltyCoefficient / params.excessCapacityPenaltyMultiplier,
+            params.excessCapacityMaxPenalty);
+      } else if (lastFeasibleIterations < -params.excessCapacityPenaltyIncreaseThreshold) {
+        excessCapacityPenaltyCoefficient = Math.max(
+            excessCapacityPenaltyCoefficient * params.excessCapacityPenaltyMultiplier,
+            params.excessCapacityMinPenalty);
       }
 
       // Log the data to the console.
       System.out.println("============ ITERATION #" + currentIteration + " ============");
       System.out.println("Current objective: " + objective);
-      System.out.println("Penalty Coefficient: " + penaltyCoefficient);
+      System.out.println("Penalty Coefficient: " + excessCapacityPenaltyCoefficient);
       System.out.println("Short-term memory: " + shortTermMemory);
       System.out.println("Elapsed time: " + watch.getTime());
       System.out.println("Current incumbent: " + incumbent.length);
-      System.out.println("Current 2-interchange trials #: " + twoNeighborhoodSize);
-      System.out.println("Current # of last (in)feasible iterations: " + numLastFeasible);
-      System.out.println("Current # of iterations since last incumbent: " + numSinceLastIncumbent);
+      System.out.println("Current 2-interchange trials #: " + largeNeighborhoodSize);
+      System.out.println("Current # of last (in)feasible iterations: " + lastFeasibleIterations);
+      System.out.println(
+          "Current # of iterations since last incumbent: " + iterationsSinceLastIncumbent);
+      System.out.println("Long-term memory: " + longTermMemory);
     }
   }
 
-  /**
-   * Finds the best possible insertion.
-   *
-   * @return best possible insertion from the current routes.
-   */
-  private Interchange findBestInsertion() {
+  private void updateInterchange(Interchange interchange, double interchangeObjective) {
+    System.out.println("Performing action: " + interchange);
+    objective = interchangeObjective;
+
+    // Add the customers to the short-term memory.
+    for (Insertion insertion : interchange.insertionList1) {
+      shortTermMemory.add(
+          new TabuItem(
+              routeList.routes.get(interchange.routeIdx1).customers.get(insertion.fromCustomerIdx),
+              currentIteration + getRandomTabuTenure()));
+      longTermMemory.merge(
+          routeList.routes.get(interchange.routeIdx1).customers.get(insertion.fromCustomerIdx), 1,
+          Integer::sum);
+    }
+    for (Insertion insertion : interchange.insertionList2) {
+      shortTermMemory.add(
+          new TabuItem(
+              routeList.routes.get(interchange.routeIdx2).customers.get(insertion.fromCustomerIdx),
+              currentIteration + getRandomTabuTenure()));
+      longTermMemory.merge(
+          routeList.routes.get(interchange.routeIdx2).customers.get(insertion.fromCustomerIdx), 1,
+          Integer::sum);
+    }
+
+    // Perform the actual interchange.
+    routeList.perform(interchange);
+  }
+
+  private Interchange searchNeighborhood(InterchangePerRoute lambda) {
     // We should consider the best available objective to avoid local minima.
     Interchange bestInterchange = null;
     double bestObjective = Double.POSITIVE_INFINITY;
@@ -318,39 +299,7 @@ public class VRPInstanceIncomplete extends VRPInstance {
 
     // Checks every customer index.
     for (int routeIdx1 = 0; routeIdx1 < routeList.routes.size(); routeIdx1++) {
-      BestInsertionCalculator task = new BestInsertionCalculator(routeIdx1, routeList, incumbent,
-          penaltyCoefficient, shortTermMemory, firstBestFirst);
-      tasks.add(task);
-    }
-
-    try {
-      List<Future<InterchangeResult>> futures = executor.invokeAll(tasks);
-      for (Future<InterchangeResult> future : futures) {
-        InterchangeResult result = future.get();
-        if (result.objective < bestObjective) {
-          // Save the best place to insert this customer so far.
-          bestInterchange = result.interchange;
-          bestObjective = result.objective;
-        }
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-
-    return bestInterchange;
-  }
-
-  private Interchange findBest2Interchange() {
-    // We should consider the best available objective to avoid local minima.
-    Interchange bestInterchange = null;
-    double bestObjective = Double.POSITIVE_INFINITY;
-
-    List<Callable<InterchangeResult>> tasks = new ArrayList<>();
-
-    // Checks every customer index.
-    for (int routeIdx1 = 0; routeIdx1 < routeList.routes.size(); routeIdx1++) {
-      BestRandom2ICalculator task = new BestRandom2ICalculator(routeIdx1, routeList, incumbent,
-          penaltyCoefficient, shortTermMemory, firstBestFirst, twoNeighborhoodSize);
+      InterchangeCalculator task = lambda.op(routeIdx1);
       tasks.add(task);
     }
 
@@ -377,47 +326,21 @@ public class VRPInstanceIncomplete extends VRPInstance {
    * @return random tabu tenure.
    */
   private int getRandomTabuTenure() {
-    return rand.nextInt((maximumTabuTenure - minimumTabuTenure) + 1) + minimumTabuTenure;
+    return rand.nextInt((params.maximumTabuTenure - params.minimumTabuTenure) + 1)
+        + params.minimumTabuTenure;
   }
 
-  /**
-   * Finds the best possible swap.
-   *
-   * @return best possible swap from the current routes
-   */
-  private Interchange findBestSwap() {
-    // We should consider the best available objective to avoid local minima.
-    Interchange bestInterchange = null;
-    double bestObjective = Double.POSITIVE_INFINITY;
-
-    List<Callable<InterchangeResult>> tasks = new ArrayList<>();
-
-    // Checks every customer index.
-    for (int routeIdx1 = 0; routeIdx1 < routeList.routes.size(); routeIdx1++) {
-      BestSwapCalculator task = new BestSwapCalculator(routeIdx1, routeList, incumbent,
-          penaltyCoefficient, shortTermMemory, firstBestFirst);
-      tasks.add(task);
+  private double calculateObjective(Interchange interchange) {
+    double customerUsePenalty = 0;
+    for (Insertion insertion : interchange.insertionList1) {
+      customerUsePenalty += longTermMemory.get(insertion.fromCustomerIdx);
     }
-
-    try {
-      List<Future<InterchangeResult>> futures = executor.invokeAll(tasks);
-      for (Future<InterchangeResult> future : futures) {
-        InterchangeResult result = future.get();
-        if (result.objective < bestObjective) {
-          // Save the best place to insert this customer so far.
-          bestInterchange = result.interchange;
-          bestObjective = result.objective;
-        }
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+    for (Insertion insertion : interchange.insertionList2) {
+      customerUsePenalty += longTermMemory.get(insertion.fromCustomerIdx);
     }
-
-    return bestInterchange;
-  }
-
-  private double calculateObjective(double tourLength, double excessCapacity) {
-    return tourLength + excessCapacity * penaltyCoefficient;
+    return routeList.length + routeList.calculateEdgeDelta(interchange)
+        + excessCapacityPenaltyCoefficient * routeList.calculateExcessCapacity(interchange)
+        + customerUsePenaltyCoefficient * Math.sqrt(numCustomers) * customerUsePenalty;
   }
 
   /**

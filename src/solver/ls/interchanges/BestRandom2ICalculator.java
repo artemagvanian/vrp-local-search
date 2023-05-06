@@ -3,7 +3,6 @@ package solver.ls.interchanges;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.Callable;
 import solver.ls.data.Insertion;
 import solver.ls.data.Interchange;
 import solver.ls.data.InterchangeResult;
@@ -11,38 +10,18 @@ import solver.ls.data.Route;
 import solver.ls.data.RouteList;
 import solver.ls.data.TabuItem;
 
-public class BestRandom2ICalculator implements Callable<InterchangeResult> {
+public class BestRandom2ICalculator extends InterchangeCalculator {
 
   private final int routeIdx1;
-  private final RouteList routeList;
-  private final RouteList incumbent;
-  private final double excessCapacityPenaltyCoefficient;
-  private final List<TabuItem> shortTermMemory;
-  private final boolean firstBestFirst;
   private final int numAttempts;
-  private Interchange bestInterchange;
-  private double bestObjective = Double.POSITIVE_INFINITY;
 
-  public BestRandom2ICalculator(int routeIdx1, RouteList routeList, RouteList incumbent,
+  public BestRandom2ICalculator(RouteList routeList, RouteList incumbent,
       double excessCapacityPenaltyCoefficient, List<TabuItem> shortTermMemory,
-      boolean firstBestFirst, int numAttempts) {
+      boolean firstBestFirst, int routeIdx1, int numAttempts) {
+    super(routeList, incumbent, excessCapacityPenaltyCoefficient, shortTermMemory,
+        firstBestFirst);
     this.routeIdx1 = routeIdx1;
-    this.routeList = routeList;
-    this.incumbent = incumbent;
-    this.excessCapacityPenaltyCoefficient = excessCapacityPenaltyCoefficient;
-    this.shortTermMemory = shortTermMemory;
-    this.firstBestFirst = firstBestFirst;
     this.numAttempts = numAttempts;
-  }
-
-  private boolean isCustomerTabu(int routeIdx, int customerIdx) {
-    int customer = routeList.routes.get(routeIdx).customers.get(customerIdx);
-    for (TabuItem item : shortTermMemory) {
-      if (item.customer == customer) {
-        return true;
-      }
-    }
-    return false;
   }
 
   public InterchangeResult call() {
