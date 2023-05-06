@@ -42,6 +42,14 @@ public class RouteList implements Cloneable {
     return clonedRoutes;
   }
 
+  private double calculateRouteLength(Route route, double[][] distances) {
+    double routeLength = 0;
+    for (int i = 0; i < route.customers.size() - 1; i++) {
+      routeLength += distances[route.customers.get(i)][route.customers.get(i + 1)];
+    }
+    return routeLength;
+  }
+
   public double calculateEdgeDelta(Interchange interchange) {
     Route route1 = routes.get(interchange.routeIdx1);
     Route route2 = routes.get(interchange.routeIdx2);
@@ -52,8 +60,10 @@ public class RouteList implements Cloneable {
       return calculateInsertionDelta(route1, route2, insertion);
     } else if (interchange.insertionList1.size() == 1 && interchange.insertionList2.size() == 1) {
       return calculateSwapDelta(route1, route2, interchange);
+    } else if (interchange.insertionList1.size() == 2 && interchange.insertionList2.size() == 2) {
+      return calculate2IDelta(route1, route2, interchange);
     } else {
-      throw new IllegalArgumentException("Can only process 1-interchanges.");
+      throw new IllegalArgumentException("Can only process (1,0), (1,1), (2,2) -interchanges.");
     }
   }
 
@@ -102,6 +112,22 @@ public class RouteList implements Cloneable {
             + distances[customer2FutureRightNeighbor][customer2];
 
     return extractionDelta + insertionDelta;
+  }
+
+  private double calculate2IDelta(Route route1, Route route2, Interchange interchange) {
+    Route clonedRoute1 = route1.clone();
+    Route clonedRoute2 = route2.clone();
+
+    performRawInterchange(clonedRoute1, clonedRoute2, interchange.insertionList1,
+        interchange.insertionList2);
+
+    double newRoute1Length = calculateRouteLength(clonedRoute1, distances);
+    double newRoute2Length = calculateRouteLength(clonedRoute2, distances);
+
+    double oldRoute1Length = calculateRouteLength(route1, distances);
+    double oldRoute2Length = calculateRouteLength(route2, distances);
+
+    return newRoute1Length - oldRoute1Length + newRoute2Length - oldRoute2Length;
   }
 
   private double calculateInsertionDelta(Route route1, Route route2, Insertion insertion) {
