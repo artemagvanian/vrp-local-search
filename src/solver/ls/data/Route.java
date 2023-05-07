@@ -141,7 +141,8 @@ public class Route implements Cloneable {
           return 0;
         }
       } else {
-        throw new IllegalArgumentException("Infeasible TSP model.");
+        System.err.println("Infeasible TSP model.");
+        return 0;
       }
 
     } catch (IloException e) {
