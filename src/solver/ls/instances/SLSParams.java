@@ -91,11 +91,15 @@ public class SLSParams {
    * Base number of tries for 2-interchanges.
    */
   public final int largeNeighborhoodBaseSize = 1000;
-
   /**
    * Number of stale incumbent iterations before the restart.
    */
-  public final int restartThreshold = 250;
+  public final int baseRestartThreshold = 250;
+
+  /**
+   * Restart threshold multiplier.
+   */
+  public final double restartThresholdMultiplier = 1.25;
 
   public SLSParams() {
   }

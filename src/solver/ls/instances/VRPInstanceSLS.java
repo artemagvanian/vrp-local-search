@@ -93,6 +93,10 @@ public class VRPInstanceSLS extends VRPInstance {
    * Number of tries for 2-interchanges.
    */
   private int largeNeighborhoodSize;
+  /**
+   * Restart threshold.
+   */
+  private int restartThreshold;
 
   public VRPInstanceSLS(String fileName, Timer watch, SLSParams params) {
     super(fileName);
@@ -110,6 +114,7 @@ public class VRPInstanceSLS extends VRPInstance {
     largeNeighborhoodSize = params.largeNeighborhoodBaseSize;
     excessCapacityPenaltyCoefficient = params.excessCapacityBasePenalty;
     customerUsePenaltyCoefficient = params.customerUseBasePenalty;
+    restartThreshold = params.baseRestartThreshold;
     // Generate the initial solution, initialize variables.
     routeList = generateInitialSolution();
     // Optimize routes.
@@ -263,17 +268,22 @@ public class VRPInstanceSLS extends VRPInstance {
             params.excessCapacityMaxPenalty);
       }
 
+      // Randomly optimize the solution.
       if (rand.nextDouble()
           < params.randomOptimizationChance) { // kOptimize chance of optimization.
         routeList.length += routeList.routes.get(rand.nextInt(routeList.routes.size()))
             .optimize(distances, params.optimizationTimeout);
       }
 
-      if (iterationsSinceLastIncumbent > params.restartThreshold) {
+      // Random restarts.
+      if (iterationsSinceLastIncumbent > restartThreshold) {
+        // Clear short-term memory
+        shortTermMemory.clear();
         // Instantiate coefficients.
         largeNeighborhoodSize = params.largeNeighborhoodBaseSize;
         excessCapacityPenaltyCoefficient = params.excessCapacityBasePenalty;
         customerUsePenaltyCoefficient = params.customerUseBasePenalty;
+        restartThreshold *= params.restartThresholdMultiplier;
         // Generate the initial solution, initialize variables.
         routeList = generateInitialSolution();
         // Optimize routes.
@@ -288,23 +298,29 @@ public class VRPInstanceSLS extends VRPInstance {
 
       // Log the data to the console.
       System.out.println("============ ITERATION #" + currentIteration + " ============");
-      System.out.println("Current objective: " + objective);
-      System.out.println("EC Penalty Coefficient: " + excessCapacityPenaltyCoefficient);
-      System.out.println("Short-term memory: " + shortTermMemory);
-      System.out.println("Elapsed time: " + watch.getTime());
-      System.out.println("Current incumbent: " + incumbent.length);
-      System.out.println("Best incumbent: " + bestIncumbent.length);
-      System.out.println("Current 2-interchange trials #: " + largeNeighborhoodSize);
-      System.out.println("Current # of last (in)feasible iterations: " + lastFeasibleIterations);
+      System.out.println("\tCurrent objective: " + objective);
+      System.out.println("\tCurrent incumbent: " + incumbent.length);
+      System.out.println("\tBest incumbent: " + bestIncumbent.length);
+      System.out.println("--> PENALTIES");
+      System.out.println("\tEC Penalty Coefficient: " + excessCapacityPenaltyCoefficient);
+      System.out.println("\tCU Penalty Coefficient: " + customerUsePenaltyCoefficient);
+      System.out.println("-->  MEMORY");
+      System.out.println("\tShort-term memory: " + shortTermMemory);
+      System.out.println("\tLong-term memory: " + longTermMemory);
+      System.out.println("-->  NBHD & RESTARTS");
+      System.out.println("\tCurrent 2-interchange trials #: " + largeNeighborhoodSize);
+      System.out.println("\tCurrent # of last (in)feasible iterations: " + lastFeasibleIterations);
       System.out.println(
-          "Current # of iterations since last incumbent: " + iterationsSinceLastIncumbent);
-      System.out.println("Long-term memory: " + longTermMemory);
-      System.out.println("CU Penalty Coefficient: " + customerUsePenaltyCoefficient);
+          "\tCurrent # of iterations since last incumbent: " + iterationsSinceLastIncumbent);
+      System.out.println("\tRestart threshold: " + restartThreshold);
+      System.out.println("-->  TIME");
+      System.out.println("\tElapsed time: " + watch.getTime());
     }
   }
 
   private void updateInterchange(Interchange interchange, double interchangeObjective) {
-    System.out.println("Performing action: " + interchange);
+    System.out.println("-->  PERFORMING ACTION");
+    System.out.println("\t" + interchange);
     objective = interchangeObjective;
 
     // Add the customers to the short-term memory.
