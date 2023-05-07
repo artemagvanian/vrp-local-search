@@ -4,6 +4,7 @@ import ilog.concert.IloException;
 import ilog.concert.IloLinearNumExpr;
 import ilog.concert.IloNumVar;
 import ilog.cplex.IloCplex;
+import ilog.cplex.IloCplex.Param;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -53,9 +54,13 @@ public class VRPInstanceSLS extends VRPInstance {
    */
   private final ExecutorService executor = Executors.newFixedThreadPool(16);
   /**
-   * Current best solution, with no excess capacity.
+   * Current best solution for the current restart, with no excess capacity.
    */
   public RouteList incumbent;
+  /**
+   * Current best solution, with no excess capacity.
+   */
+  public RouteList bestIncumbent;
   /**
    * Current solution, not necessarily optimal.
    */
@@ -112,6 +117,7 @@ public class VRPInstanceSLS extends VRPInstance {
       routeList.length += route.optimize(distances, params.optimizationTimeout);
     }
     incumbent = routeList.clone();
+    bestIncumbent = routeList.clone();
     objective = incumbent.length;
     // Objective of the initial solution.
     System.out.println("Initial objective: " + objective);
@@ -133,7 +139,7 @@ public class VRPInstanceSLS extends VRPInstance {
     currentIteration = 0;
 
     // Keep going for a fixed number of iterations.
-    while (watch.getTime() < params.instanceTimeout - 5) {
+    while (watch.getTime() < params.instanceTimeout - 2 * params.optimizationTimeout) {
       currentIteration++;
       // Calculate both best insertion and best swap.
       bestInsertion = searchNeighborhood(
@@ -202,6 +208,9 @@ public class VRPInstanceSLS extends VRPInstance {
         }
         incumbent = routeList.clone();
         iterationsSinceLastIncumbent = 0;
+        if (incumbent.length < bestIncumbent.length) {
+          bestIncumbent = incumbent.clone();
+        }
       } else {
         iterationsSinceLastIncumbent++;
       }
@@ -260,18 +269,37 @@ public class VRPInstanceSLS extends VRPInstance {
             .optimize(distances, params.optimizationTimeout);
       }
 
+      if (iterationsSinceLastIncumbent > params.restartThreshold) {
+        // Instantiate coefficients.
+        largeNeighborhoodSize = params.largeNeighborhoodBaseSize;
+        excessCapacityPenaltyCoefficient = params.excessCapacityBasePenalty;
+        customerUsePenaltyCoefficient = params.customerUseBasePenalty;
+        // Generate the initial solution, initialize variables.
+        routeList = generateInitialSolution();
+        // Optimize routes.
+        for (Route route : routeList.routes) {
+          routeList.length += route.optimize(distances, params.optimizationTimeout);
+        }
+        incumbent = routeList.clone();
+        objective = routeList.length;
+        iterationsSinceLastIncumbent = 0;
+        lastFeasibleIterations = 1;
+      }
+
       // Log the data to the console.
       System.out.println("============ ITERATION #" + currentIteration + " ============");
       System.out.println("Current objective: " + objective);
-      System.out.println("Penalty Coefficient: " + excessCapacityPenaltyCoefficient);
+      System.out.println("EC Penalty Coefficient: " + excessCapacityPenaltyCoefficient);
       System.out.println("Short-term memory: " + shortTermMemory);
       System.out.println("Elapsed time: " + watch.getTime());
       System.out.println("Current incumbent: " + incumbent.length);
+      System.out.println("Best incumbent: " + bestIncumbent.length);
       System.out.println("Current 2-interchange trials #: " + largeNeighborhoodSize);
       System.out.println("Current # of last (in)feasible iterations: " + lastFeasibleIterations);
       System.out.println(
           "Current # of iterations since last incumbent: " + iterationsSinceLastIncumbent);
       System.out.println("Long-term memory: " + longTermMemory);
+      System.out.println("CU Penalty Coefficient: " + customerUsePenaltyCoefficient);
     }
   }
 
@@ -370,6 +398,8 @@ public class VRPInstanceSLS extends VRPInstance {
     try (IloCplex bppModel = new IloCplex()) {
       bppModel.setOut(null);
       bppModel.setWarning(null);
+
+      bppModel.setParam(Param.RandomSeed, rand.nextInt(Integer.MAX_VALUE));
 
       IloNumVar[] useVehicles = bppModel.boolVarArray(numVehicles);
       IloNumVar[][] customerVehicleAssignment = new IloNumVar[numCustomers - 1][numVehicles];

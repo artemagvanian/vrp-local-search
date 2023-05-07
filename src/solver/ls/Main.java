@@ -34,7 +34,7 @@ public class Main {
     watch.stop();
 
     double excessCapacity = incompleteInstance.calculateExcessCapacity(
-        incompleteInstance.incumbent);
+        incompleteInstance.bestIncumbent);
 
     assert excessCapacity == 0;
 
@@ -55,13 +55,13 @@ public class Main {
       currentBest = Double.POSITIVE_INFINITY;
     }
 
-    if (incompleteInstance.incumbent.length < currentBest) {
+    if (incompleteInstance.bestIncumbent.length < currentBest) {
       String instanceHeader =
-          String.format("%.2f", incompleteInstance.incumbent.length) + " 0\n";
+          String.format("%.2f", incompleteInstance.bestIncumbent.length) + " 0\n";
       BufferedWriter writer = new BufferedWriter(new FileWriter(fullFileName));
       writer.write(instanceHeader);
       // Serialize routes one-by-one.
-      for (Route route : incompleteInstance.incumbent.routes) {
+      for (Route route : incompleteInstance.bestIncumbent.routes) {
         for (Integer customer : route.customers) {
           writer.write(customer + " ");
         }
@@ -73,8 +73,8 @@ public class Main {
     // Output the instance string.
     System.out.println(
         "{\"Instance\": \"" + filename + "\", \"Time\": " + String.format("%.2f", watch.getTime())
-            + ", \"Result\": " + String.format("%.2f", incompleteInstance.incumbent.length)
+            + ", \"Result\": " + String.format("%.2f", incompleteInstance.bestIncumbent.length)
             + ", \"Solution\": \"" + incompleteInstance.serializeRoutes(
-            incompleteInstance.incumbent) + "\"}");
+            incompleteInstance.bestIncumbent) + "\"}");
   }
 }

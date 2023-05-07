@@ -13,7 +13,7 @@ public class SLSParams {
   /**
    * Timeout to optimize the solution (seconds).
    */
-  public final double optimizationTimeout = 5;
+  public final double optimizationTimeout = 1;
   /**
    * Allowed solution time (seconds).
    */
@@ -65,7 +65,7 @@ public class SLSParams {
   /**
    * Maximum CU penalty.
    */
-  public final double customerUseMaxPenalty = 2;
+  public final double customerUseMaxPenalty = 100;
   /**
    * Base CU penalty.
    */
@@ -78,7 +78,7 @@ public class SLSParams {
   /**
    * By how much to increase the neighborhood size once the incumbent does not change.
    */
-  public final double largeNeighborhoodSizeMultiplier = 1;
+  public final double largeNeighborhoodSizeMultiplier = 1.01;
   /**
    * Minimum number of tries for 2-interchanges.
    */
@@ -86,11 +86,16 @@ public class SLSParams {
   /**
    * Maximum number of tries for 2-interchanges.
    */
-  public final int largeNeighborhoodMaxSize = 1000;
+  public final int largeNeighborhoodMaxSize = 10000;
   /**
    * Base number of tries for 2-interchanges.
    */
   public final int largeNeighborhoodBaseSize = 1000;
+
+  /**
+   * Number of stale incumbent iterations before the restart.
+   */
+  public final int restartThreshold = 250;
 
   public SLSParams() {
   }
