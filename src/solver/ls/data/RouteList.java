@@ -80,11 +80,15 @@ public class RouteList implements Cloneable {
       double excessCapacityPenaltyCoefficient, double customerUsePenaltyCoefficient,
       int currentIteration) {
     double customerUsePenalty = 0;
+
+    Route route1 = routes.get(interchange.routeIdx1);
+    Route route2 = routes.get(interchange.routeIdx2);
+
     for (Insertion insertion : interchange.insertionList1) {
-      customerUsePenalty += longTermMemory.get(insertion.fromCustomerIdx);
+      customerUsePenalty += longTermMemory.get(route1.customers.get(insertion.fromCustomerIdx));
     }
     for (Insertion insertion : interchange.insertionList2) {
-      customerUsePenalty += longTermMemory.get(insertion.fromCustomerIdx);
+      customerUsePenalty += longTermMemory.get(route2.customers.get(insertion.fromCustomerIdx));
     }
     return length + calculateEdgeDelta(interchange)
         + excessCapacityPenaltyCoefficient * Math.sqrt(vehicleCapacity * routes.size())

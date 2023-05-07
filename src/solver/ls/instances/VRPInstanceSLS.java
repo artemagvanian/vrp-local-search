@@ -399,7 +399,7 @@ public class VRPInstanceSLS extends VRPInstance {
       bppModel.setOut(null);
       bppModel.setWarning(null);
 
-      bppModel.setParam(Param.RandomSeed, rand.nextInt(Integer.MAX_VALUE));
+      bppModel.setParam(Param.RandomSeed, rand.nextInt(10000));
 
       IloNumVar[] useVehicles = bppModel.boolVarArray(numVehicles);
       IloNumVar[][] customerVehicleAssignment = new IloNumVar[numCustomers - 1][numVehicles];
