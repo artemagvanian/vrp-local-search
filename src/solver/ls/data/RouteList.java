@@ -78,7 +78,7 @@ public class RouteList implements Cloneable {
 
   public double calculateObjective(Interchange interchange,
       double excessCapacityPenaltyCoefficient, double customerUsePenaltyCoefficient,
-      int currentIteration) {
+      int currentIteration, boolean print) {
     double customerUsePenalty = 0;
 
     Route route1 = routes.get(interchange.routeIdx1);
@@ -90,11 +90,20 @@ public class RouteList implements Cloneable {
     for (Insertion insertion : interchange.insertionList2) {
       customerUsePenalty += longTermMemory.get(route2.customers.get(insertion.fromCustomerIdx));
     }
-    return length + calculateEdgeDelta(interchange)
-        + excessCapacityPenaltyCoefficient * Math.sqrt(vehicleCapacity * routes.size())
-        * calculateExcessCapacity(interchange)
-        + customerUsePenaltyCoefficient * Math.sqrt(numCustomers) * customerUsePenalty
+
+    double newLength = length + calculateEdgeDelta(interchange);
+    double ecPenalty = excessCapacityPenaltyCoefficient * Math.sqrt(vehicleCapacity * routes.size())
+        * calculateExcessCapacity(interchange);
+    double cuPenalty = customerUsePenaltyCoefficient * Math.sqrt(numCustomers) * customerUsePenalty
         / currentIteration;
+
+    if (print) {
+      System.out.println(
+          "Objective = " + newLength + " (length) + "
+              + ecPenalty + " (EC penalty) + " + cuPenalty + "(CU penalty)");
+    }
+
+    return newLength + ecPenalty + cuPenalty;
   }
 
   private double calculateSwapDelta(Route route1, Route route2, Interchange interchange) {

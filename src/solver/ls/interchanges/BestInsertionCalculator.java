@@ -47,7 +47,8 @@ public class BestInsertionCalculator extends InterchangeCalculator {
 
           // Calculate objective function and check whether it is better than the current.
           double newObjective = routeList.calculateObjective(interchange,
-              excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration);
+              excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration,
+              false);
           if (newObjective < bestObjective) {
             // Check whether the current customer is in the tabu list, account for aspiration.
             if (!isCustomerTabu(routeIdx1, customerIdxFrom) ||

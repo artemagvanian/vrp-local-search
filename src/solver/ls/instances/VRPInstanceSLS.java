@@ -146,6 +146,8 @@ public class VRPInstanceSLS extends VRPInstance {
     // Keep going for a fixed number of iterations.
     while (watch.getTime() < params.instanceTimeout - 2 * params.optimizationTimeout) {
       currentIteration++;
+      System.out.println("============ ITERATION #" + currentIteration + " ============");
+
       // Calculate both best insertion and best swap.
       bestInsertion = searchNeighborhood(
           (routeIdx1) -> new BestInsertionCalculator(routeList, incumbent,
@@ -164,15 +166,15 @@ public class VRPInstanceSLS extends VRPInstance {
       double insertionObjective =
           bestInsertion == null ? Double.POSITIVE_INFINITY
               : routeList.calculateObjective(bestInsertion, excessCapacityPenaltyCoefficient,
-                  customerUsePenaltyCoefficient, currentIteration);
+                  customerUsePenaltyCoefficient, currentIteration, true);
       double swapObjective =
           bestSwap == null ? Double.POSITIVE_INFINITY
               : routeList.calculateObjective(bestSwap, excessCapacityPenaltyCoefficient,
-                  customerUsePenaltyCoefficient, currentIteration);
+                  customerUsePenaltyCoefficient, currentIteration, true);
       double twoInterchangeObjective =
           best2Interchange == null ? Double.POSITIVE_INFINITY
               : routeList.calculateObjective(best2Interchange, excessCapacityPenaltyCoefficient,
-                  customerUsePenaltyCoefficient, currentIteration);
+                  customerUsePenaltyCoefficient, currentIteration, true);
 
       // Route indices of the interchange, so we could optimize those later.
       int routeIdx1 = 0;
@@ -297,7 +299,6 @@ public class VRPInstanceSLS extends VRPInstance {
       }
 
       // Log the data to the console.
-      System.out.println("============ ITERATION #" + currentIteration + " ============");
       System.out.println("\tCurrent objective: " + objective);
       System.out.println("\tCurrent incumbent: " + incumbent.length);
       System.out.println("\tBest incumbent: " + bestIncumbent.length);

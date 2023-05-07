@@ -84,7 +84,8 @@ public class BestRandom2ICalculator extends InterchangeCalculator {
 
         double excessCapacity = routeList.calculateExcessCapacity(interchange);
         double newObjective = routeList.calculateObjective(interchange,
-            excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration);
+            excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration,
+            false);
 
         // If we are better than what we have now.
         if (newObjective < bestObjective) {

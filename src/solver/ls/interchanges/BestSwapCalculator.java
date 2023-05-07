@@ -53,7 +53,7 @@ public class BestSwapCalculator extends InterchangeCalculator {
               double excessCapacity = routeList.calculateExcessCapacity(interchange);
               double newObjective = routeList.calculateObjective(interchange,
                   excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient,
-                  currentIteration);
+                  currentIteration, false);
 
               // If we are better than what we have now.
               if (newObjective < bestObjective) {
