@@ -99,8 +99,8 @@ public class RouteList implements Cloneable {
 
     if (print) {
       System.out.println(
-          "Objective = " + newLength + " (length) + "
-              + ecPenalty + " (EC penalty) + " + cuPenalty + "(CU penalty)");
+          "\tObjective = " + newLength + " (length) + "
+              + ecPenalty + " (EC penalty) + " + cuPenalty + " (CU penalty)");
     }
 
     return newLength + ecPenalty + cuPenalty;

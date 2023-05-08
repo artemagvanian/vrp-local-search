@@ -3,13 +3,13 @@ package solver.ls.instances;
 public class SLSParams {
 
   /**
-   * The minimum value tabu tenure can take.
+   * The minimum tabu tenure multiplier.
    */
-  public final int minimumTabuTenure = 5;
+  public final double minimumTabuTenureMultiplier = 0.8;
   /**
-   * The maximum value tabu tenure can take.
+   * The maximum tabu tenure multiplier.
    */
-  public final int maximumTabuTenure = 10;
+  public final double maximumTabuTenureMultiplier = 1.2;
   /**
    * Timeout to optimize the solution (seconds).
    */
@@ -25,7 +25,7 @@ public class SLSParams {
   /**
    * Randomly optimizes the incumbent with some chance.
    */
-  public final double optimizationChance = 0.1;
+  public final double optimizationChance = 0.05;
   /**
    * Randomly optimizes the current route list with some chance.
    */
@@ -94,12 +94,12 @@ public class SLSParams {
   /**
    * Number of stale incumbent iterations before the restart.
    */
-  public final int baseRestartThreshold = 250;
+  public final int baseRestartThreshold = 100;
 
   /**
    * Restart threshold multiplier.
    */
-  public final double restartThresholdMultiplier = 1.25;
+  public final double restartThresholdMultiplier = 1.5;
 
   public SLSParams() {
   }

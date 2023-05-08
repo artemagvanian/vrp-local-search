@@ -384,8 +384,12 @@ public class VRPInstanceSLS extends VRPInstance {
    * @return random tabu tenure.
    */
   private int getRandomTabuTenure() {
-    return rand.nextInt((params.maximumTabuTenure - params.minimumTabuTenure) + 1)
-        + params.minimumTabuTenure;
+    int minimumTabuTenure = (int) Math.floor(
+        params.minimumTabuTenureMultiplier * Math.sqrt(numCustomers));
+    int maximumTabuTenure = (int) Math.floor(
+        params.maximumTabuTenureMultiplier * Math.sqrt(numCustomers));
+    return rand.nextInt((maximumTabuTenure - minimumTabuTenure) + 1)
+        + minimumTabuTenure;
   }
 
   /**
@@ -416,7 +420,8 @@ public class VRPInstanceSLS extends VRPInstance {
       bppModel.setOut(null);
       bppModel.setWarning(null);
 
-      bppModel.setParam(Param.RandomSeed, rand.nextInt(10000));
+      // Bound taken from the official CPLEX docs.
+      bppModel.setParam(Param.RandomSeed, rand.nextInt(2100000000));
 
       IloNumVar[] useVehicles = bppModel.boolVarArray(numVehicles);
       IloNumVar[][] customerVehicleAssignment = new IloNumVar[numCustomers - 1][numVehicles];
