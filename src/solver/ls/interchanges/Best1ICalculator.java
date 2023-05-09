@@ -9,11 +9,11 @@ import solver.ls.data.Route;
 import solver.ls.data.RouteList;
 import solver.ls.data.TabuItem;
 
-public class BestSwapCalculator extends InterchangeCalculator {
+public class Best1ICalculator extends InterchangeCalculator {
 
   private final int routeIdx1;
 
-  public BestSwapCalculator(RouteList routeList, RouteList incumbent,
+  public Best1ICalculator(RouteList routeList, RouteList incumbent,
       double excessCapacityPenaltyCoefficient, double customerUsePenaltyCoefficient,
       int currentIteration, List<TabuItem> shortTermMemory, boolean firstBestFirst, int routeIdx1) {
     super(routeList, incumbent, excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient,
@@ -50,8 +50,8 @@ public class BestSwapCalculator extends InterchangeCalculator {
                 customer2IdxTo++) {
               interchange.insertionList2.get(0).toCustomerIdx = customer2IdxTo;
 
-              double excessCapacity = routeList.calculateExcessCapacity(interchange);
-              double newObjective = routeList.calculateObjective(interchange,
+              double excessCapacity = routeList.excessCapacity(interchange);
+              double newObjective = routeList.objective(interchange,
                   excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient,
                   currentIteration, false);
 

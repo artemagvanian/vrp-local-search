@@ -41,18 +41,4 @@ public class Interchange implements Cloneable {
       throw new AssertionError();
     }
   }
-
-  public void invert() {
-    int temp;
-
-    temp = routeIdx1;
-    routeIdx1 = routeIdx2;
-    routeIdx2 = temp;
-
-    for (Insertion insertion : insertionList1) {
-      temp = insertion.fromCustomerIdx;
-      insertion.fromCustomerIdx = insertion.toCustomerIdx;
-      insertion.toCustomerIdx = temp;
-    }
-  }
 }

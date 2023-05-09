@@ -17,8 +17,8 @@ public class BestRandom2ICalculator extends InterchangeCalculator {
 
   public BestRandom2ICalculator(RouteList routeList, RouteList incumbent,
       double excessCapacityPenaltyCoefficient, double customerUsePenaltyCoefficient,
-      List<TabuItem> shortTermMemory, boolean firstBestFirst, int routeIdx1, int numAttempts,
-      int currentIteration) {
+      int currentIteration, List<TabuItem> shortTermMemory, boolean firstBestFirst, int routeIdx1,
+      int numAttempts) {
     super(routeList, incumbent, excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient,
         shortTermMemory, firstBestFirst, currentIteration);
     this.routeIdx1 = routeIdx1;
@@ -82,8 +82,8 @@ public class BestRandom2ICalculator extends InterchangeCalculator {
           continue;
         }
 
-        double excessCapacity = routeList.calculateExcessCapacity(interchange);
-        double newObjective = routeList.calculateObjective(interchange,
+        double excessCapacity = routeList.excessCapacity(interchange);
+        double newObjective = routeList.objective(interchange,
             excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration,
             false);
 

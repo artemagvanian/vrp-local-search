@@ -20,9 +20,9 @@ import solver.ls.data.InterchangeResult;
 import solver.ls.data.Route;
 import solver.ls.data.RouteList;
 import solver.ls.data.TabuItem;
-import solver.ls.interchanges.BestInsertionCalculator;
+import solver.ls.interchanges.Best0ICalculator;
+import solver.ls.interchanges.Best1ICalculator;
 import solver.ls.interchanges.BestRandom2ICalculator;
-import solver.ls.interchanges.BestSwapCalculator;
 import solver.ls.interchanges.InterchangeCalculator;
 import solver.ls.interchanges.InterchangePerRoute;
 import solver.ls.utils.Timer;
@@ -137,8 +137,8 @@ public class VRPInstanceSLS extends VRPInstance {
    * \lambda = 1, so we consider swaps and shifts: (1, 1), (1, 0).
    */
   private void search() {
-    Interchange bestInsertion;
-    Interchange bestSwap;
+    Interchange best0Interchange;
+    Interchange best1Interchange;
     Interchange best2Interchange;
 
     currentIteration = 0;
@@ -149,57 +149,66 @@ public class VRPInstanceSLS extends VRPInstance {
       System.out.println("============ ITERATION #" + currentIteration + " ============");
 
       // Calculate both best insertion and best swap.
-      bestInsertion = searchNeighborhood(
-          (routeIdx1) -> new BestInsertionCalculator(routeList, incumbent,
+      best0Interchange = searchNeighborhood(
+          (routeIdx1) -> new Best0ICalculator(routeList, incumbent,
               excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration,
               shortTermMemory, params.firstBestFirst, routeIdx1));
-      bestSwap = searchNeighborhood(
-          (routeIdx1) -> new BestSwapCalculator(routeList, incumbent,
+      best1Interchange = searchNeighborhood(
+          (routeIdx1) -> new Best1ICalculator(routeList, incumbent,
               excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration,
               shortTermMemory, params.firstBestFirst, routeIdx1));
       best2Interchange = searchNeighborhood(
           (routeIdx1) -> new BestRandom2ICalculator(routeList, incumbent,
-              excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, shortTermMemory,
-              params.firstBestFirst, routeIdx1, largeNeighborhoodSize, currentIteration));
+              excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration,
+              shortTermMemory, params.firstBestFirst, routeIdx1, largeNeighborhoodSize));
 
       // Get insertion objectives, if possible.
-      double insertionObjective =
-          bestInsertion == null ? Double.POSITIVE_INFINITY
-              : routeList.calculateObjective(bestInsertion, excessCapacityPenaltyCoefficient,
+      double objective0I =
+          best0Interchange == null ? Double.POSITIVE_INFINITY
+              : routeList.objective(best0Interchange, excessCapacityPenaltyCoefficient,
                   customerUsePenaltyCoefficient, currentIteration, true);
-      double swapObjective =
-          bestSwap == null ? Double.POSITIVE_INFINITY
-              : routeList.calculateObjective(bestSwap, excessCapacityPenaltyCoefficient,
+      double objective1I =
+          best1Interchange == null ? Double.POSITIVE_INFINITY
+              : routeList.objective(best1Interchange, excessCapacityPenaltyCoefficient,
                   customerUsePenaltyCoefficient, currentIteration, true);
-      double twoInterchangeObjective =
+      double objective2I =
           best2Interchange == null ? Double.POSITIVE_INFINITY
-              : routeList.calculateObjective(best2Interchange, excessCapacityPenaltyCoefficient,
+              : routeList.objective(best2Interchange, excessCapacityPenaltyCoefficient,
                   customerUsePenaltyCoefficient, currentIteration, true);
 
       // Route indices of the interchange, so we could optimize those later.
       int routeIdx1 = 0;
       int routeIdx2 = 0;
 
-      if (bestInsertion != null || bestSwap != null || best2Interchange != null) {
+      if (best0Interchange != null || best1Interchange != null || best2Interchange != null) {
         // If current best insertion is better.
-        if (insertionObjective <= swapObjective && insertionObjective <= twoInterchangeObjective) {
-          assert bestInsertion != null;
-          updateInterchange(bestInsertion, insertionObjective);
-          routeIdx1 = bestInsertion.routeIdx1;
-          routeIdx2 = bestInsertion.routeIdx2;
-        } else if (swapObjective <= insertionObjective
-            && swapObjective <= twoInterchangeObjective) {
-          assert bestSwap != null;
-          updateInterchange(bestSwap, insertionObjective);
-          routeIdx1 = bestSwap.routeIdx1;
-          routeIdx2 = bestSwap.routeIdx2;
+        if (objective0I <= objective1I && objective0I <= objective2I) {
+          assert best0Interchange != null;
+          updateInterchange(best0Interchange, objective0I);
+          routeIdx1 = best0Interchange.routeIdx1;
+          routeIdx2 = best0Interchange.routeIdx2;
+        } else if (objective1I <= objective0I
+            && objective1I <= objective2I) {
+          assert best1Interchange != null;
+          updateInterchange(best1Interchange, objective1I);
+          routeIdx1 = best1Interchange.routeIdx1;
+          routeIdx2 = best1Interchange.routeIdx2;
         } else {
           assert best2Interchange != null;
-          updateInterchange(best2Interchange, insertionObjective);
+          updateInterchange(best2Interchange, objective2I);
           routeIdx1 = best2Interchange.routeIdx1;
           routeIdx2 = best2Interchange.routeIdx2;
         }
       }
+
+      // Check whether route length is actually correct.
+      /*
+      double routeSum = 0;
+      for (Route route : routeList.routes) {
+        routeSum += routeLength(route, distances);
+      }
+      assert Math.abs(routeSum - routeList.length) < Math.pow(10, -6);
+       */
 
       // Remove all tabu items that are past the tenure.
       int finalCurrentIteration = currentIteration;
