@@ -74,11 +74,11 @@ public class SLSParams {
    * How many iterations of steady incumbent has to pass before we start changing the neighborhood
    * size.
    */
-  public final int largeNeighborhoodSizeIncreaseThreshold = 50;
+  public final int largeNeighborhoodSizeIncreaseThreshold = 5;
   /**
    * By how much to increase the neighborhood size once the incumbent does not change.
    */
-  public final double largeNeighborhoodSizeMultiplier = 1.01;
+  public final double largeNeighborhoodSizeMultiplier = 1.05;
   /**
    * Minimum number of tries for 2-interchanges.
    */
@@ -94,7 +94,7 @@ public class SLSParams {
   /**
    * Number of stale incumbent iterations before the restart.
    */
-  public final int baseRestartThreshold = 100;
+  public final int baseRestartThreshold = 50;
 
   /**
    * Restart threshold multiplier.
