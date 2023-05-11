@@ -25,11 +25,11 @@ public class SLSParams {
   /**
    * Randomly optimizes the incumbent with some chance.
    */
-  public final double optimizationChance = 0.05;
+  public final double optimizationChance = 0.0;
   /**
    * Randomly optimizes the current route list with some chance.
    */
-  public final double randomOptimizationChance = 0.01;
+  public final double randomOptimizationChance = 0.0;
   /**
    * How many feasible/infeasible assignments we should have to start changing the EC penalty.
    */
@@ -37,15 +37,15 @@ public class SLSParams {
   /**
    * Multiplier for the EC penalty coefficient.
    */
-  public final double excessCapacityPenaltyMultiplier = 1.5;
+  public final double excessCapacityPenaltyMultiplier = 2;
   /**
    * Minimum EC penalty.
    */
-  public final double excessCapacityMinPenalty = 0.000001;
+  public final double excessCapacityMinPenalty = Double.MIN_VALUE;
   /**
    * Maximum EC penalty.
    */
-  public final double excessCapacityMaxPenalty = 1000000;
+  public final double excessCapacityMaxPenalty = Double.MAX_VALUE;
   /**
    * Base EC penalty.
    */
@@ -53,48 +53,48 @@ public class SLSParams {
   /**
    * How many iterations of steady incumbent has to pass before we start changing the CU penalty.
    */
-  public final int customerUsePenaltyIncreaseThreshold = 20;
+  public final int customerUsePenaltyIncreaseThreshold = 5;
   /**
    * Multiplier for the CU penalty coefficient.
    */
-  public final double customerUsePenaltyMultiplier = 1.05;
+  public final double customerUsePenaltyMultiplier = 1.01;
   /**
    * Minimum CU penalty.
    */
-  public final double customerUseMinPenalty = 1;
+  public final double customerUseMinPenalty = 0.01;
   /**
    * Maximum CU penalty.
    */
-  public final double customerUseMaxPenalty = 100;
+  public final double customerUseMaxPenalty = 10;
   /**
    * Base CU penalty.
    */
-  public final double customerUseBasePenalty = 1;
+  public final double customerUseBasePenalty = 0.01;
   /**
    * How many iterations of steady incumbent has to pass before we start changing the neighborhood
    * size.
    */
-  public final int largeNeighborhoodSizeIncreaseThreshold = 5;
+  public final int largeNeighborhoodSizeIncreaseThreshold = 20;
   /**
    * By how much to increase the neighborhood size once the incumbent does not change.
    */
-  public final double largeNeighborhoodSizeMultiplier = 1.05;
+  public final double largeNeighborhoodSizeMultiplier = 1.01;
   /**
    * Minimum number of tries for 2-interchanges.
    */
-  public final int largeNeighborhoodMinSize = 1000;
+  public final int largeNeighborhoodMinSize = 500;
   /**
    * Maximum number of tries for 2-interchanges.
    */
-  public final int largeNeighborhoodMaxSize = 10000;
+  public final int largeNeighborhoodMaxSize = 5000;
   /**
    * Base number of tries for 2-interchanges.
    */
-  public final int largeNeighborhoodBaseSize = 1000;
+  public final int largeNeighborhoodBaseSize = 500;
   /**
    * Number of stale incumbent iterations before the restart.
    */
-  public final int baseRestartThreshold = 50;
+  public final int baseRestartThreshold = 64;
 
   /**
    * Restart threshold multiplier.

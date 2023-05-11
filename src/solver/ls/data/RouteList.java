@@ -68,10 +68,11 @@ public class RouteList implements Cloneable {
     }
 
     double newLength = length + edgeDelta(interchange, this, distances);
-    double ecPenalty = excessCapacityPenaltyCoefficient * Math.sqrt(vehicleCapacity * routes.size())
-        * excessCapacity(interchange);
-    double cuPenalty = customerUsePenaltyCoefficient * Math.sqrt(numCustomers) * numCustomers
-	 * customerUsePenalty / currentIteration;
+    double ecPenalty =
+        excessCapacityPenaltyCoefficient * excessCapacity(interchange) / vehicleCapacity;
+    double cuPenalty =
+        customerUsePenaltyCoefficient * Math.sqrt(numCustomers) *
+            customerUsePenalty / currentIteration;
 
     if (print) {
       System.out.println(

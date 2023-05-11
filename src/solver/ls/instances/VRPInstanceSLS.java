@@ -210,7 +210,7 @@ public class VRPInstanceSLS extends VRPInstance {
       for (Route route : routeList.routes) {
         routeSum += routeLength(route, distances);
       }
-      assert Math.abs(routeSum - routeList.length) < Math.pow(10, -6);
+      assert Math.abs(routeSum - routeList.length / normCoefficient) < Math.pow(10, -6);
        */
 
       // Remove all tabu items that are past the tenure.
@@ -312,8 +312,10 @@ public class VRPInstanceSLS extends VRPInstance {
 
       // Log the data to the console.
       System.out.println("\tCurrent objective (normalized): " + objective);
-      System.out.println("\tCurrent incumbent (normalized): " + incumbent.length);
-      System.out.println("\tBest incumbent (normalized): " + bestIncumbent.length);
+      System.out.println(
+          "\tCurrent incumbent (denormalized): " + incumbent.length / normCoefficient);
+      System.out.println(
+          "\tBest incumbent (denormalized): " + bestIncumbent.length / normCoefficient);
       System.out.println("--> PENALTIES");
       System.out.println("\tEC Penalty Coefficient: " + excessCapacityPenaltyCoefficient);
       System.out.println("\tCU Penalty Coefficient: " + customerUsePenaltyCoefficient);
