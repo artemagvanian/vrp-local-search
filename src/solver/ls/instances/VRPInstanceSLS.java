@@ -128,6 +128,13 @@ public class VRPInstanceSLS extends VRPInstance {
     System.out.println("Initial objective: " + objective);
     // Perform search for a given number of iterations.
     search();
+
+    double distance = 0;
+    for (Route route : bestIncumbent.routes) {
+      distance += route.calculateRouteLength(originalDistances);
+    }
+    bestIncumbent.length = distance;
+
     // Shut down executor.
     executor.shutdownNow();
   }
@@ -163,18 +170,15 @@ public class VRPInstanceSLS extends VRPInstance {
               shortTermMemory, params.firstBestFirst, routeIdx1, largeNeighborhoodSize));
 
       // Get insertion objectives, if possible.
-      double objective0I =
-          best0Interchange == null ? Double.POSITIVE_INFINITY
-              : routeList.objective(best0Interchange, excessCapacityPenaltyCoefficient,
-                  customerUsePenaltyCoefficient, currentIteration, true);
-      double objective1I =
-          best1Interchange == null ? Double.POSITIVE_INFINITY
-              : routeList.objective(best1Interchange, excessCapacityPenaltyCoefficient,
-                  customerUsePenaltyCoefficient, currentIteration, true);
-      double objective2I =
-          best2Interchange == null ? Double.POSITIVE_INFINITY
-              : routeList.objective(best2Interchange, excessCapacityPenaltyCoefficient,
-                  customerUsePenaltyCoefficient, currentIteration, true);
+      double objective0I = best0Interchange == null ? Double.POSITIVE_INFINITY
+          : routeList.objective(best0Interchange, excessCapacityPenaltyCoefficient,
+              customerUsePenaltyCoefficient, currentIteration, true);
+      double objective1I = best1Interchange == null ? Double.POSITIVE_INFINITY
+          : routeList.objective(best1Interchange, excessCapacityPenaltyCoefficient,
+              customerUsePenaltyCoefficient, currentIteration, true);
+      double objective2I = best2Interchange == null ? Double.POSITIVE_INFINITY
+          : routeList.objective(best2Interchange, excessCapacityPenaltyCoefficient,
+              customerUsePenaltyCoefficient, currentIteration, true);
 
       // Route indices of the interchange, so we could optimize those later.
       int routeIdx1 = 0;
@@ -187,8 +191,7 @@ public class VRPInstanceSLS extends VRPInstance {
           updateInterchange(best0Interchange, objective0I);
           routeIdx1 = best0Interchange.routeIdx1;
           routeIdx2 = best0Interchange.routeIdx2;
-        } else if (objective1I <= objective0I
-            && objective1I <= objective2I) {
+        } else if (objective1I <= objective0I && objective1I <= objective2I) {
           assert best1Interchange != null;
           updateInterchange(best1Interchange, objective1I);
           routeIdx1 = best1Interchange.routeIdx1;
@@ -308,9 +311,9 @@ public class VRPInstanceSLS extends VRPInstance {
       }
 
       // Log the data to the console.
-      System.out.println("\tCurrent objective: " + objective);
-      System.out.println("\tCurrent incumbent: " + incumbent.length);
-      System.out.println("\tBest incumbent: " + bestIncumbent.length);
+      System.out.println("\tCurrent objective (normalized): " + objective);
+      System.out.println("\tCurrent incumbent (normalized): " + incumbent.length);
+      System.out.println("\tBest incumbent (normalized): " + bestIncumbent.length);
       System.out.println("--> PENALTIES");
       System.out.println("\tEC Penalty Coefficient: " + excessCapacityPenaltyCoefficient);
       System.out.println("\tCU Penalty Coefficient: " + customerUsePenaltyCoefficient);
@@ -335,19 +338,17 @@ public class VRPInstanceSLS extends VRPInstance {
 
     // Add the customers to the short-term memory.
     for (Insertion insertion : interchange.insertionList1) {
-      shortTermMemory.add(
-          new TabuItem(
-              routeList.routes.get(interchange.routeIdx1).customers.get(insertion.fromCustomerIdx),
-              currentIteration + getRandomTabuTenure()));
+      shortTermMemory.add(new TabuItem(
+          routeList.routes.get(interchange.routeIdx1).customers.get(insertion.fromCustomerIdx),
+          currentIteration + getRandomTabuTenure()));
       longTermMemory.merge(
           routeList.routes.get(interchange.routeIdx1).customers.get(insertion.fromCustomerIdx), 1,
           Integer::sum);
     }
     for (Insertion insertion : interchange.insertionList2) {
-      shortTermMemory.add(
-          new TabuItem(
-              routeList.routes.get(interchange.routeIdx2).customers.get(insertion.fromCustomerIdx),
-              currentIteration + getRandomTabuTenure()));
+      shortTermMemory.add(new TabuItem(
+          routeList.routes.get(interchange.routeIdx2).customers.get(insertion.fromCustomerIdx),
+          currentIteration + getRandomTabuTenure()));
       longTermMemory.merge(
           routeList.routes.get(interchange.routeIdx2).customers.get(insertion.fromCustomerIdx), 1,
           Integer::sum);
@@ -397,8 +398,7 @@ public class VRPInstanceSLS extends VRPInstance {
         params.minimumTabuTenureMultiplier * Math.sqrt(numCustomers));
     int maximumTabuTenure = (int) Math.floor(
         params.maximumTabuTenureMultiplier * Math.sqrt(numCustomers));
-    return rand.nextInt((maximumTabuTenure - minimumTabuTenure) + 1)
-        + minimumTabuTenure;
+    return rand.nextInt((maximumTabuTenure - minimumTabuTenure) + 1) + minimumTabuTenure;
   }
 
   /**

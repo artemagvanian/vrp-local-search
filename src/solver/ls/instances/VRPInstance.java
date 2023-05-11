@@ -15,6 +15,7 @@ public abstract class VRPInstance {
   public double[] xCoordOfCustomer;        // the x coordinate of each customer
   public double[] yCoordOfCustomer;        // the y coordinate of each customer
   public double[][] distances;             // distances between all customers
+  public double[][] originalDistances;     // original distances between all customers
 
 
   protected VRPInstance(String fileName) {
@@ -51,7 +52,9 @@ public abstract class VRPInstance {
           demandOfCustomer[i] + " " + xCoordOfCustomer[i] + " " + yCoordOfCustomer[i]);
     }
 
+    originalDistances = getDistances();
     distances = getDistances();
+    normalizeDistances(distances);
   }
 
   private static double distance(double x1, double x2, double y1, double y2) {
@@ -72,7 +75,25 @@ public abstract class VRPInstance {
     return distances;
   }
 
-  protected int bestTenureFromExperimentation(String fileName){
+  private void normalizeDistances(double[][] distances) {
+    double maxDistance = 0;
+    for (int i = 0; i < numCustomers; i++) {
+      for (int j = 0; j < numCustomers; j++) {
+        if (maxDistance < distances[i][j]) {
+          maxDistance = distances[i][j];
+        }
+      }
+    }
+
+    for (int i = 0; i < numCustomers; i++) {
+      for (int j = 0; j < numCustomers; j++) {
+        distances[i][j] *= 100;
+        distances[i][j] /= maxDistance;
+      }
+    }
+  }
+
+  protected int bestTenureFromExperimentation(String fileName) {
     HashMap<String, Integer> bestTenureValues = new HashMap<>();
     bestTenureValues.put("input/5_4_10.vrp", 1);
     bestTenureValues.put("input/16_5_1.vrp", 5);

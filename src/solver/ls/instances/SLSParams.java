@@ -53,11 +53,11 @@ public class SLSParams {
   /**
    * How many iterations of steady incumbent has to pass before we start changing the CU penalty.
    */
-  public final int customerUsePenaltyIncreaseThreshold = 50;
+  public final int customerUsePenaltyIncreaseThreshold = 20;
   /**
    * Multiplier for the CU penalty coefficient.
    */
-  public final double customerUsePenaltyMultiplier = 1.01;
+  public final double customerUsePenaltyMultiplier = 1.05;
   /**
    * Minimum CU penalty.
    */
@@ -99,7 +99,7 @@ public class SLSParams {
   /**
    * Restart threshold multiplier.
    */
-  public final double restartThresholdMultiplier = 1.5;
+  public final double restartThresholdMultiplier = 2;
 
   public SLSParams() {
   }

@@ -19,11 +19,11 @@ public class EdgeDeltaCalculators {
     performRawInterchange(clonedRoute1, clonedRoute2, interchange.insertionList1,
         interchange.insertionList2);
 
-    double newRoute1Length = routeLength(clonedRoute1, distances);
-    double newRoute2Length = routeLength(clonedRoute2, distances);
+    double newRoute1Length = clonedRoute1.calculateRouteLength(distances);
+    double newRoute2Length = clonedRoute2.calculateRouteLength(distances);
 
-    double oldRoute1Length = routeLength(route1, distances);
-    double oldRoute2Length = routeLength(route2, distances);
+    double oldRoute1Length = route1.calculateRouteLength(distances);
+    double oldRoute2Length = route2.calculateRouteLength(distances);
 
     return newRoute1Length - oldRoute1Length + newRoute2Length - oldRoute2Length;
   }
@@ -300,14 +300,6 @@ public class EdgeDeltaCalculators {
       route1.customers.add(removedCustomer.insertion.toCustomerIdx, removedCustomer.customer);
     }
 
-  }
-
-  public static double routeLength(Route route, double[][] distances) {
-    double routeLength = 0;
-    for (int i = 0; i < route.customers.size() - 1; i++) {
-      routeLength += distances[route.customers.get(i)][route.customers.get(i + 1)];
-    }
-    return routeLength;
   }
 
   public static double edgeDelta(Interchange interchange, RouteList routeList,
