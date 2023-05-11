@@ -61,15 +61,15 @@ public class SLSParams {
   /**
    * Minimum CU penalty.
    */
-  public final double customerUseMinPenalty = 0.01;
+  public final double customerUseMinPenalty = 0.1;
   /**
    * Maximum CU penalty.
    */
-  public final double customerUseMaxPenalty = 10;
+  public final double customerUseMaxPenalty = 1;
   /**
    * Base CU penalty.
    */
-  public final double customerUseBasePenalty = 0.01;
+  public final double customerUseBasePenalty = 0.5;
   /**
    * How many iterations of steady incumbent has to pass before we start changing the neighborhood
    * size.
