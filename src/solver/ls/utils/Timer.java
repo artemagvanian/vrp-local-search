@@ -10,11 +10,6 @@ public class Timer {
     super();
   }
 
-  public void reset() {
-    this.startTime = 0;
-    this.running = false;
-  }
-
   public void start() {
     this.startTime = System.nanoTime();
     this.running = true;

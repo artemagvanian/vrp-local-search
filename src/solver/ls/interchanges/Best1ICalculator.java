@@ -27,11 +27,10 @@ public class Best1ICalculator extends InterchangeCalculator {
         routeIdx1, new ArrayList<>(List.of(new Insertion(0, 0))),
         0, new ArrayList<>(List.of(new Insertion(0, 0))));
 
+    Route route1 = routeList.routes.get(routeIdx1);
     // Check every route with which we can swap.
     for (int routeIdx2 = routeIdx1 + 1; routeIdx2 < routeList.routes.size(); routeIdx2++) {
       interchange.routeIdx2 = routeIdx2;
-
-      Route route1 = routeList.routes.get(routeIdx1);
       Route route2 = routeList.routes.get(routeIdx2);
       // Account for depots here.
       for (int customer1IdxFrom = 1; customer1IdxFrom < route1.customers.size() - 1;
@@ -50,7 +49,7 @@ public class Best1ICalculator extends InterchangeCalculator {
                 customer2IdxTo++) {
               interchange.insertionList2.get(0).toCustomerIdx = customer2IdxTo;
 
-              double excessCapacity = routeList.excessCapacity(interchange);
+              double excessCapacity = routeList.excessCapacity(interchange, route1, route2);
               double newObjective = routeList.objective(interchange,
                   excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient,
                   currentIteration, false);

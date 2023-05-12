@@ -27,14 +27,13 @@ public class Best0ICalculator extends InterchangeCalculator {
         routeIdx1, new ArrayList<>(List.of(new Insertion(0, 0))),
         0, new ArrayList<>(List.of()));
 
+    Route route1 = routeList.routes.get(routeIdx1);
     // Check every route into which we can insert.
     for (int routeIdx2 = 0; routeIdx2 < routeList.routes.size(); routeIdx2++) {
       if (routeIdx2 == routeIdx1) {
         continue;
       }
       interchange.routeIdx2 = routeIdx2;
-
-      Route route1 = routeList.routes.get(routeIdx1);
       Route route2 = routeList.routes.get(routeIdx2);
 
       for (int customerIdxFrom = 1; customerIdxFrom < route1.customers.size() - 1;
@@ -43,8 +42,7 @@ public class Best0ICalculator extends InterchangeCalculator {
         for (int customerIdxTo = 1; customerIdxTo < route2.customers.size(); customerIdxTo++) {
           interchange.insertionList1.get(0).toCustomerIdx = customerIdxTo;
 
-          double excessCapacity = routeList.excessCapacity(interchange);
-
+          double excessCapacity = routeList.excessCapacity(interchange, route1, route2);
           // Calculate objective function and check whether it is better than the current.
           double newObjective = routeList.objective(interchange,
               excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration,

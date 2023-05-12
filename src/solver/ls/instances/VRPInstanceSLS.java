@@ -9,9 +9,7 @@ import ilog.concert.IloNumVar;
 import ilog.cplex.IloCplex;
 import ilog.cplex.IloCplex.Param;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -43,7 +41,7 @@ public class VRPInstanceSLS extends VRPInstance {
   /**
    * Map between the customer and the number of interchanges it participated in.
    */
-  private final Map<Integer, Integer> longTermMemory;
+  private final List<Integer> longTermMemory;
   /**
    * Random number generator for the instance.
    */
@@ -59,7 +57,7 @@ public class VRPInstanceSLS extends VRPInstance {
   /**
    * Logging switch.
    */
-  private final boolean enableLogging = false;
+  private final boolean enableLogging = true;
   /**
    * Current best solution for the current restart, with no excess capacity.
    */
@@ -116,9 +114,9 @@ public class VRPInstanceSLS extends VRPInstance {
     this.watch = watch;
     // Initialize helpers.
     shortTermMemory = new ArrayList<>();
-    longTermMemory = new HashMap<>();
+    longTermMemory = new ArrayList<>(numCustomers);
     for (int i = 0; i < numCustomers; i++) {
-      longTermMemory.put(i, 0);
+      longTermMemory.add(0);
     }
     rand = new Random();
     // Instantiate coefficients.
@@ -367,20 +365,16 @@ public class VRPInstanceSLS extends VRPInstance {
 
     // Add the customers to the short-term memory.
     for (Insertion insertion : interchange.insertionList1) {
-      shortTermMemory.add(new TabuItem(
-          routeList.routes.get(interchange.routeIdx1).customers.get(insertion.fromCustomerIdx),
-          currentIteration + getRandomTabuTenure()));
-      longTermMemory.merge(
-          routeList.routes.get(interchange.routeIdx1).customers.get(insertion.fromCustomerIdx), 1,
-          Integer::sum);
+      int customer = routeList.routes.get(interchange.routeIdx1).customers.get(
+          insertion.fromCustomerIdx);
+      shortTermMemory.add(new TabuItem(customer, currentIteration + getRandomTabuTenure()));
+      longTermMemory.set(customer, longTermMemory.get(customer) + 1);
     }
     for (Insertion insertion : interchange.insertionList2) {
-      shortTermMemory.add(new TabuItem(
-          routeList.routes.get(interchange.routeIdx2).customers.get(insertion.fromCustomerIdx),
-          currentIteration + getRandomTabuTenure()));
-      longTermMemory.merge(
-          routeList.routes.get(interchange.routeIdx2).customers.get(insertion.fromCustomerIdx), 1,
-          Integer::sum);
+      int customer = routeList.routes.get(interchange.routeIdx2).customers.get(
+          insertion.fromCustomerIdx);
+      shortTermMemory.add(new TabuItem(customer, currentIteration + getRandomTabuTenure()));
+      longTermMemory.set(customer, longTermMemory.get(customer) + 1);
     }
 
     // Perform the actual interchange.

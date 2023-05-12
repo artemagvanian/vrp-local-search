@@ -5,14 +5,13 @@ import static solver.ls.incremental.EdgeDeltaCalculators.performRawInterchange;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class RouteList implements Cloneable {
 
   private final double[][] distances;
   private final int[] demandOfCustomer;
   private final int vehicleCapacity;
-  private final Map<Integer, Integer> longTermMemory;
+  private final List<Integer> longTermMemory;
   private final int numCustomers;
   public List<Route> routes;
 
@@ -20,7 +19,7 @@ public class RouteList implements Cloneable {
   private int excessCapacity;
 
   public RouteList(List<Route> routes, double length, double[][] distances, int[] demandOfCustomer,
-      int vehicleCapacity, Map<Integer, Integer> longTermMemory, int numCustomers,
+      int vehicleCapacity, List<Integer> longTermMemory, int numCustomers,
       int excessCapacity) {
     this.routes = routes;
     this.length = length;
@@ -69,7 +68,8 @@ public class RouteList implements Cloneable {
 
     double newLength = length + edgeDelta(interchange, this, distances);
     double ecPenalty =
-        excessCapacityPenaltyCoefficient * excessCapacity(interchange) / vehicleCapacity;
+        excessCapacityPenaltyCoefficient * excessCapacity(interchange, route1, route2)
+            / vehicleCapacity;
     double cuPenalty =
         customerUsePenaltyCoefficient * Math.sqrt(numCustomers) *
             customerUsePenalty / currentIteration;
@@ -83,10 +83,7 @@ public class RouteList implements Cloneable {
     return newLength + ecPenalty + cuPenalty;
   }
 
-  public int excessCapacity(Interchange interchange) {
-    Route route1 = routes.get(interchange.routeIdx1);
-    Route route2 = routes.get(interchange.routeIdx2);
-
+  public int excessCapacity(Interchange interchange, Route route1, Route route2) {
     int newCustomerDemandRoute1 = route1.demand;
     int newCustomerDemandRoute2 = route2.demand;
 
@@ -113,10 +110,10 @@ public class RouteList implements Cloneable {
 
   public void perform(Interchange interchange) {
     length += edgeDelta(interchange, this, distances);
-    excessCapacity = excessCapacity(interchange);
-
     Route route1 = routes.get(interchange.routeIdx1);
     Route route2 = routes.get(interchange.routeIdx2);
+
+    excessCapacity = excessCapacity(interchange, route1, route2);
 
     // Update customer demands for the routes.
     for (Insertion insertion : interchange.insertionList1) {
