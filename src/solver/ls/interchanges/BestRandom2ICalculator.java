@@ -25,8 +25,45 @@ public class BestRandom2ICalculator extends InterchangeCalculator {
     this.numAttempts = numAttempts;
   }
 
-  private int randIntBetween(Random rand, int origin, int bound) {
+  public static int randIntBetween(Random rand, int origin, int bound) {
     return rand.nextInt(bound - origin) + origin;
+  }
+
+  public static void populateRandom2I(Interchange interchange, Route route1, Route route2,
+      Random rand) {
+    while (true) {
+      interchange.insertionList1.get(0).fromCustomerIdx = randIntBetween(rand, 1,
+          route1.customers.size() - 1);
+      interchange.insertionList1.get(0).toCustomerIdx = randIntBetween(rand, 1,
+          route2.customers.size() - 1);
+
+      interchange.insertionList1.get(1).fromCustomerIdx = randIntBetween(rand, 1,
+          route1.customers.size() - 1);
+      interchange.insertionList1.get(1).toCustomerIdx = randIntBetween(rand, 1,
+          route2.customers.size() - 1);
+
+      interchange.insertionList2.get(0).fromCustomerIdx = randIntBetween(rand, 1,
+          route2.customers.size() - 1);
+      interchange.insertionList2.get(0).toCustomerIdx = randIntBetween(rand, 1,
+          route1.customers.size() - 1);
+
+      interchange.insertionList2.get(1).fromCustomerIdx = randIntBetween(rand, 1,
+          route2.customers.size() - 1);
+      interchange.insertionList2.get(1).toCustomerIdx = randIntBetween(rand, 1,
+          route1.customers.size() - 1);
+
+      if (interchange.insertionList1.get(0).fromCustomerIdx == interchange.insertionList1.get(
+          1).fromCustomerIdx ||
+          interchange.insertionList1.get(0).toCustomerIdx == interchange.insertionList1.get(
+              1).toCustomerIdx ||
+          interchange.insertionList2.get(0).fromCustomerIdx == interchange.insertionList2.get(
+              1).fromCustomerIdx ||
+          interchange.insertionList2.get(0).toCustomerIdx == interchange.insertionList2.get(
+              1).toCustomerIdx) {
+        continue;
+      }
+      return;
+    }
   }
 
   public InterchangeResult call() {
@@ -50,37 +87,7 @@ public class BestRandom2ICalculator extends InterchangeCalculator {
       }
 
       for (int i = 0; i < numAttempts; i++) {
-
-        interchange.insertionList1.get(0).fromCustomerIdx = randIntBetween(rand, 1,
-            route1.customers.size() - 1);
-        interchange.insertionList1.get(0).toCustomerIdx = randIntBetween(rand, 1,
-            route2.customers.size() - 1);
-
-        interchange.insertionList1.get(1).fromCustomerIdx = randIntBetween(rand, 1,
-            route1.customers.size() - 1);
-        interchange.insertionList1.get(1).toCustomerIdx = randIntBetween(rand, 1,
-            route2.customers.size() - 1);
-
-        interchange.insertionList2.get(0).fromCustomerIdx = randIntBetween(rand, 1,
-            route2.customers.size() - 1);
-        interchange.insertionList2.get(0).toCustomerIdx = randIntBetween(rand, 1,
-            route1.customers.size() - 1);
-
-        interchange.insertionList2.get(1).fromCustomerIdx = randIntBetween(rand, 1,
-            route2.customers.size() - 1);
-        interchange.insertionList2.get(1).toCustomerIdx = randIntBetween(rand, 1,
-            route1.customers.size() - 1);
-
-        if (interchange.insertionList1.get(0).fromCustomerIdx == interchange.insertionList1.get(
-            1).fromCustomerIdx ||
-            interchange.insertionList1.get(0).toCustomerIdx == interchange.insertionList1.get(
-                1).toCustomerIdx ||
-            interchange.insertionList2.get(0).fromCustomerIdx == interchange.insertionList2.get(
-                1).fromCustomerIdx ||
-            interchange.insertionList2.get(0).toCustomerIdx == interchange.insertionList2.get(
-                1).toCustomerIdx) {
-          continue;
-        }
+        populateRandom2I(interchange, route1, route2, rand);
 
         double excessCapacity = routeList.excessCapacity(interchange);
         double newObjective = routeList.objective(interchange,

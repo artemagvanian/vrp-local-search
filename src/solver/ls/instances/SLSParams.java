@@ -41,11 +41,11 @@ public class SLSParams {
   /**
    * Minimum EC penalty.
    */
-  public final double excessCapacityMinPenalty = Double.MIN_VALUE;
+  public final double excessCapacityMinPenalty = 0.000001;
   /**
    * Maximum EC penalty.
    */
-  public final double excessCapacityMaxPenalty = Double.MAX_VALUE;
+  public final double excessCapacityMaxPenalty = 1000000;
   /**
    * Base EC penalty.
    */
@@ -86,7 +86,7 @@ public class SLSParams {
   /**
    * Maximum number of tries for 2-interchanges.
    */
-  public final int largeNeighborhoodMaxSize = 5000;
+  public final int largeNeighborhoodMaxSize = 2500;
   /**
    * Base number of tries for 2-interchanges.
    */
@@ -95,11 +95,22 @@ public class SLSParams {
    * Number of stale incumbent iterations before the restart.
    */
   public final int baseRestartThreshold = 64;
-
   /**
    * Restart threshold multiplier.
    */
-  public final double restartThresholdMultiplier = 2;
+  public final double restartThresholdMultiplier = 1.5;
+  /**
+   * Random move minimum chance.
+   */
+  public final double randomMoveMin = 0.0001;
+  /**
+   * Random move maximum chance.
+   */
+  public final double randomMoveMax = 0.75;
+  /**
+   * Random move chance multiplier.
+   */
+  public final double randomMoveMultiplier = 1.01;
 
   public SLSParams() {
   }

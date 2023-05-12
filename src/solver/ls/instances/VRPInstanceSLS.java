@@ -1,5 +1,8 @@
 package solver.ls.instances;
 
+import static solver.ls.interchanges.BestRandom2ICalculator.populateRandom2I;
+import static solver.ls.interchanges.BestRandom2ICalculator.randIntBetween;
+
 import ilog.concert.IloException;
 import ilog.concert.IloLinearNumExpr;
 import ilog.concert.IloNumVar;
@@ -97,6 +100,10 @@ public class VRPInstanceSLS extends VRPInstance {
    * Restart threshold.
    */
   private int restartThreshold;
+  /**
+   * Random move chance.
+   */
+  private double randomMoveChance;
 
   public VRPInstanceSLS(String fileName, Timer watch, SLSParams params) {
     super(fileName);
@@ -115,15 +122,12 @@ public class VRPInstanceSLS extends VRPInstance {
     excessCapacityPenaltyCoefficient = params.excessCapacityBasePenalty;
     customerUsePenaltyCoefficient = params.customerUseBasePenalty;
     restartThreshold = params.baseRestartThreshold;
+    randomMoveChance = params.randomMoveMax;
     // Generate the initial solution, initialize variables.
     routeList = generateInitialSolution();
-    // Optimize routes.
-    for (Route route : routeList.routes) {
-      routeList.length += route.optimize(distances, params.optimizationTimeout);
-    }
     incumbent = routeList.clone();
     bestIncumbent = routeList.clone();
-    objective = incumbent.length;
+    objective = routeList.length;
     // Objective of the initial solution.
     System.out.println("Initial objective: " + objective);
     // Perform search for a given number of iterations.
@@ -155,52 +159,67 @@ public class VRPInstanceSLS extends VRPInstance {
       currentIteration++;
       System.out.println("============ ITERATION #" + currentIteration + " ============");
 
-      // Calculate both best insertion and best swap.
-      best0Interchange = searchNeighborhood(
-          (routeIdx1) -> new Best0ICalculator(routeList, incumbent,
-              excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration,
-              shortTermMemory, params.firstBestFirst, routeIdx1));
-      best1Interchange = searchNeighborhood(
-          (routeIdx1) -> new Best1ICalculator(routeList, incumbent,
-              excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration,
-              shortTermMemory, params.firstBestFirst, routeIdx1));
-      best2Interchange = searchNeighborhood(
-          (routeIdx1) -> new BestRandom2ICalculator(routeList, incumbent,
-              excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration,
-              shortTermMemory, params.firstBestFirst, routeIdx1, largeNeighborhoodSize));
+      if (rand.nextDouble() < randomMoveChance) {
+        int routeIdx1 = 0;
+        int routeIdx2 = 0;
 
-      // Get insertion objectives, if possible.
-      double objective0I = best0Interchange == null ? Double.POSITIVE_INFINITY
-          : routeList.objective(best0Interchange, excessCapacityPenaltyCoefficient,
-              customerUsePenaltyCoefficient, currentIteration, true);
-      double objective1I = best1Interchange == null ? Double.POSITIVE_INFINITY
-          : routeList.objective(best1Interchange, excessCapacityPenaltyCoefficient,
-              customerUsePenaltyCoefficient, currentIteration, true);
-      double objective2I = best2Interchange == null ? Double.POSITIVE_INFINITY
-          : routeList.objective(best2Interchange, excessCapacityPenaltyCoefficient,
-              customerUsePenaltyCoefficient, currentIteration, true);
+        while (routeIdx1 == routeIdx2 || routeList.routes.get(routeIdx1).customers.size() < 4 ||
+            routeList.routes.get(routeIdx2).customers.size() < 4) {
+          routeIdx1 = randIntBetween(rand, 0, routeList.routes.size() - 1);
+          routeIdx2 = randIntBetween(rand, 0, routeList.routes.size() - 1);
+        }
 
-      // Route indices of the interchange, so we could optimize those later.
-      int routeIdx1 = 0;
-      int routeIdx2 = 0;
+        Route route1 = routeList.routes.get(routeIdx1);
+        Route route2 = routeList.routes.get(routeIdx2);
 
-      if (best0Interchange != null || best1Interchange != null || best2Interchange != null) {
-        // If current best insertion is better.
-        if (objective0I <= objective1I && objective0I <= objective2I) {
-          assert best0Interchange != null;
-          updateInterchange(best0Interchange, objective0I);
-          routeIdx1 = best0Interchange.routeIdx1;
-          routeIdx2 = best0Interchange.routeIdx2;
-        } else if (objective1I <= objective0I && objective1I <= objective2I) {
-          assert best1Interchange != null;
-          updateInterchange(best1Interchange, objective1I);
-          routeIdx1 = best1Interchange.routeIdx1;
-          routeIdx2 = best1Interchange.routeIdx2;
-        } else {
-          assert best2Interchange != null;
-          updateInterchange(best2Interchange, objective2I);
-          routeIdx1 = best2Interchange.routeIdx1;
-          routeIdx2 = best2Interchange.routeIdx2;
+        Interchange interchange = new Interchange(
+            routeIdx1, new ArrayList<>(List.of(new Insertion(0, 0), new Insertion(0, 0))),
+            routeIdx2, new ArrayList<>(List.of(new Insertion(0, 0), new Insertion(0, 0))));
+
+        populateRandom2I(interchange, route1, route2, rand);
+
+        System.out.println("============ RANDOM MOVE ============");
+        double objective = routeList.objective(interchange, excessCapacityPenaltyCoefficient,
+            customerUsePenaltyCoefficient, currentIteration, true);
+        updateInterchange(interchange, objective);
+      } else {
+        // Calculate both best insertion and best swap.
+        best0Interchange = searchNeighborhood(
+            (routeIdx) -> new Best0ICalculator(routeList, incumbent,
+                excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration,
+                shortTermMemory, params.firstBestFirst, routeIdx));
+        best1Interchange = searchNeighborhood(
+            (routeIdx) -> new Best1ICalculator(routeList, incumbent,
+                excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration,
+                shortTermMemory, params.firstBestFirst, routeIdx));
+        best2Interchange = searchNeighborhood(
+            (routeIdx) -> new BestRandom2ICalculator(routeList, incumbent,
+                excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration,
+                shortTermMemory, params.firstBestFirst, routeIdx, largeNeighborhoodSize));
+
+        // Get insertion objectives, if possible.
+        double objective0I = best0Interchange == null ? Double.POSITIVE_INFINITY
+            : routeList.objective(best0Interchange, excessCapacityPenaltyCoefficient,
+                customerUsePenaltyCoefficient, currentIteration, true);
+        double objective1I = best1Interchange == null ? Double.POSITIVE_INFINITY
+            : routeList.objective(best1Interchange, excessCapacityPenaltyCoefficient,
+                customerUsePenaltyCoefficient, currentIteration, true);
+        double objective2I = best2Interchange == null ? Double.POSITIVE_INFINITY
+            : routeList.objective(best2Interchange, excessCapacityPenaltyCoefficient,
+                customerUsePenaltyCoefficient, currentIteration, true);
+
+        if (best0Interchange != null || best1Interchange != null || best2Interchange != null) {
+          // If current best insertion is better.
+          if (objective0I <= objective1I && objective0I <= objective2I) {
+            assert best0Interchange != null;
+            updateInterchange(best0Interchange, objective0I);
+          } else if (objective1I <= objective0I && objective1I <= objective2I) {
+            assert best1Interchange != null;
+            updateInterchange(best1Interchange, objective1I);
+          } else {
+            assert best2Interchange != null;
+            updateInterchange(best2Interchange, objective2I);
+          }
         }
       }
 
@@ -219,12 +238,6 @@ public class VRPInstanceSLS extends VRPInstance {
 
       // Check whether we should update the incumbent.
       if (routeList.length < incumbent.length && calculateExcessCapacity(routeList) == 0) {
-        if (rand.nextDouble() < params.optimizationChance) { // kOptimize chance of optimization.
-          routeList.length += routeList.routes.get(routeIdx1)
-              .optimize(distances, params.optimizationTimeout);
-          routeList.length += routeList.routes.get(routeIdx2)
-              .optimize(distances, params.optimizationTimeout);
-        }
         incumbent = routeList.clone();
         iterationsSinceLastIncumbent = 0;
         if (incumbent.length < bestIncumbent.length) {
@@ -282,12 +295,10 @@ public class VRPInstanceSLS extends VRPInstance {
             params.excessCapacityMaxPenalty);
       }
 
-      // Randomly optimize the solution.
-      if (rand.nextDouble()
-          < params.randomOptimizationChance) { // kOptimize chance of optimization.
-        routeList.length += routeList.routes.get(rand.nextInt(routeList.routes.size()))
-            .optimize(distances, params.optimizationTimeout);
-      }
+      // Update random move chance, if necessary.
+      randomMoveChance = Math.max(
+          randomMoveChance / params.randomMoveMultiplier,
+          params.randomMoveMin);
 
       // Random restarts.
       if (iterationsSinceLastIncumbent > restartThreshold) {
@@ -297,14 +308,14 @@ public class VRPInstanceSLS extends VRPInstance {
         largeNeighborhoodSize = params.largeNeighborhoodBaseSize;
         excessCapacityPenaltyCoefficient = params.excessCapacityBasePenalty;
         customerUsePenaltyCoefficient = params.customerUseBasePenalty;
+        randomMoveChance = params.randomMoveMax;
         restartThreshold *= params.restartThresholdMultiplier;
         // Generate the initial solution, initialize variables.
         routeList = generateInitialSolution();
-        // Optimize routes.
-        for (Route route : routeList.routes) {
-          routeList.length += route.optimize(distances, params.optimizationTimeout);
-        }
         incumbent = routeList.clone();
+        if (incumbent.length < bestIncumbent.length) {
+          bestIncumbent = incumbent.clone();
+        }
         objective = routeList.length;
         iterationsSinceLastIncumbent = 0;
         lastFeasibleIterations = 1;
@@ -328,6 +339,7 @@ public class VRPInstanceSLS extends VRPInstance {
       System.out.println(
           "\tCurrent # of iterations since last incumbent: " + iterationsSinceLastIncumbent);
       System.out.println("\tRestart threshold: " + restartThreshold);
+      System.out.println("\tRandom move chance: " + randomMoveChance);
       System.out.println("-->  TIME");
       System.out.println("\tElapsed time: " + watch.getTime());
     }
