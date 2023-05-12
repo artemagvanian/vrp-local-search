@@ -57,6 +57,10 @@ public class VRPInstanceSLS extends VRPInstance {
    */
   private final ExecutorService executor = Executors.newFixedThreadPool(16);
   /**
+   * Logging switch.
+   */
+  private final boolean enableLogging = false;
+  /**
    * Current best solution for the current restart, with no excess capacity.
    */
   public RouteList incumbent;
@@ -129,7 +133,9 @@ public class VRPInstanceSLS extends VRPInstance {
     bestIncumbent = routeList.clone();
     objective = routeList.length;
     // Objective of the initial solution.
-    System.out.println("Initial objective: " + objective);
+    if (enableLogging) {
+      System.out.println("Initial objective: " + objective);
+    }
     // Perform search for a given number of iterations.
     search();
 
@@ -157,7 +163,9 @@ public class VRPInstanceSLS extends VRPInstance {
     // Keep going for a fixed number of iterations.
     while (watch.getTime() < params.instanceTimeout - 2 * params.optimizationTimeout) {
       currentIteration++;
-      System.out.println("============ ITERATION #" + currentIteration + " ============");
+      if (enableLogging) {
+        System.out.println("============ ITERATION #" + currentIteration + " ============");
+      }
 
       if (rand.nextDouble() < randomMoveChance) {
         int routeIdx1 = 0;
@@ -178,9 +186,11 @@ public class VRPInstanceSLS extends VRPInstance {
 
         populateRandom2I(interchange, route1, route2, rand);
 
-        System.out.println("============ RANDOM MOVE ============");
+        if (enableLogging) {
+          System.out.println("============ RANDOM MOVE ============");
+        }
         double objective = routeList.objective(interchange, excessCapacityPenaltyCoefficient,
-            customerUsePenaltyCoefficient, currentIteration, true);
+            customerUsePenaltyCoefficient, currentIteration, enableLogging);
         updateInterchange(interchange, objective);
       } else {
         // Calculate both best insertion and best swap.
@@ -200,13 +210,13 @@ public class VRPInstanceSLS extends VRPInstance {
         // Get insertion objectives, if possible.
         double objective0I = best0Interchange == null ? Double.POSITIVE_INFINITY
             : routeList.objective(best0Interchange, excessCapacityPenaltyCoefficient,
-                customerUsePenaltyCoefficient, currentIteration, true);
+                customerUsePenaltyCoefficient, currentIteration, enableLogging);
         double objective1I = best1Interchange == null ? Double.POSITIVE_INFINITY
             : routeList.objective(best1Interchange, excessCapacityPenaltyCoefficient,
-                customerUsePenaltyCoefficient, currentIteration, true);
+                customerUsePenaltyCoefficient, currentIteration, enableLogging);
         double objective2I = best2Interchange == null ? Double.POSITIVE_INFINITY
             : routeList.objective(best2Interchange, excessCapacityPenaltyCoefficient,
-                customerUsePenaltyCoefficient, currentIteration, true);
+                customerUsePenaltyCoefficient, currentIteration, enableLogging);
 
         if (best0Interchange != null || best1Interchange != null || best2Interchange != null) {
           // If current best insertion is better.
@@ -322,32 +332,37 @@ public class VRPInstanceSLS extends VRPInstance {
       }
 
       // Log the data to the console.
-      System.out.println("\tCurrent objective (normalized): " + objective);
-      System.out.println(
-          "\tCurrent incumbent (denormalized): " + incumbent.length / normCoefficient);
-      System.out.println(
-          "\tBest incumbent (denormalized): " + bestIncumbent.length / normCoefficient);
-      System.out.println("--> PENALTIES");
-      System.out.println("\tEC Penalty Coefficient: " + excessCapacityPenaltyCoefficient);
-      System.out.println("\tCU Penalty Coefficient: " + customerUsePenaltyCoefficient);
-      System.out.println("-->  MEMORY");
-      System.out.println("\tShort-term memory: " + shortTermMemory);
-      System.out.println("\tLong-term memory: " + longTermMemory);
-      System.out.println("-->  NBHD & RESTARTS");
-      System.out.println("\tCurrent 2-interchange trials #: " + largeNeighborhoodSize);
-      System.out.println("\tCurrent # of last (in)feasible iterations: " + lastFeasibleIterations);
-      System.out.println(
-          "\tCurrent # of iterations since last incumbent: " + iterationsSinceLastIncumbent);
-      System.out.println("\tRestart threshold: " + restartThreshold);
-      System.out.println("\tRandom move chance: " + randomMoveChance);
-      System.out.println("-->  TIME");
-      System.out.println("\tElapsed time: " + watch.getTime());
+      if (enableLogging) {
+        System.out.println("\tCurrent objective (normalized): " + objective);
+        System.out.println(
+            "\tCurrent incumbent (denormalized): " + incumbent.length / normCoefficient);
+        System.out.println(
+            "\tBest incumbent (denormalized): " + bestIncumbent.length / normCoefficient);
+        System.out.println("--> PENALTIES");
+        System.out.println("\tEC Penalty Coefficient: " + excessCapacityPenaltyCoefficient);
+        System.out.println("\tCU Penalty Coefficient: " + customerUsePenaltyCoefficient);
+        System.out.println("-->  MEMORY");
+        System.out.println("\tShort-term memory: " + shortTermMemory);
+        System.out.println("\tLong-term memory: " + longTermMemory);
+        System.out.println("-->  NBHD & RESTARTS");
+        System.out.println("\tCurrent 2-interchange trials #: " + largeNeighborhoodSize);
+        System.out.println(
+            "\tCurrent # of last (in)feasible iterations: " + lastFeasibleIterations);
+        System.out.println(
+            "\tCurrent # of iterations since last incumbent: " + iterationsSinceLastIncumbent);
+        System.out.println("\tRestart threshold: " + restartThreshold);
+        System.out.println("\tRandom move chance: " + randomMoveChance);
+        System.out.println("-->  TIME");
+        System.out.println("\tElapsed time: " + watch.getTime());
+      }
     }
   }
 
   private void updateInterchange(Interchange interchange, double interchangeObjective) {
-    System.out.println("-->  PERFORMING ACTION");
-    System.out.println("\t" + interchange);
+    if (enableLogging) {
+      System.out.println("-->  PERFORMING ACTION");
+      System.out.println("\t" + interchange);
+    }
     objective = interchangeObjective;
 
     // Add the customers to the short-term memory.
