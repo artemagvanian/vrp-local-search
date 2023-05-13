@@ -94,11 +94,11 @@ public class SLSParams {
   /**
    * Number of stale incumbent iterations before the restart.
    */
-  public final int baseRestartThreshold = 64;
+  public final int baseRestartThreshold = 128;
   /**
    * Restart threshold multiplier.
    */
-  public final double restartThresholdMultiplier = 1.5;
+  public final double restartThresholdMultiplier = 1.25;
   /**
    * Random move minimum chance.
    */

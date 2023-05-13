@@ -280,7 +280,7 @@ public class EdgeDeltaCalculators {
     for (Insertion insertion : insertionList1) {
       RemovedCustomer customer = new RemovedCustomer(route1.customers[insertion.fromCustomerIdx],
           insertion);
-      for (int i = insertion.fromCustomerIdx; i < route1.length; i++) {
+      for (int i = insertion.fromCustomerIdx; i < route1.length - 1; i++) {
         route1.customers[i] = route1.customers[i + 1];
       }
       route1.length--;
@@ -292,7 +292,7 @@ public class EdgeDeltaCalculators {
     for (Insertion insertion : insertionList2) {
       RemovedCustomer customer = new RemovedCustomer(route2.customers[insertion.fromCustomerIdx],
           insertion);
-      for (int i = insertion.fromCustomerIdx; i < route2.length; i++) {
+      for (int i = insertion.fromCustomerIdx; i < route2.length - 1; i++) {
         route2.customers[i] = route2.customers[i + 1];
       }
       route2.length--;

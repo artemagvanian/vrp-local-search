@@ -57,7 +57,7 @@ public class VRPInstanceSLS extends VRPInstance {
   /**
    * Logging switch.
    */
-  private final boolean enableLogging = true;
+  private final boolean enableLogging = false;
   /**
    * Current best solution for the current restart, with no excess capacity.
    */
@@ -166,13 +166,27 @@ public class VRPInstanceSLS extends VRPInstance {
       }
 
       if (rand.nextDouble() < randomMoveChance) {
+
+        int n_suitable = 0;
+        for (Route route : routeList.routes) {
+          if (route.length >= 4) {
+            n_suitable++;
+          }
+          if (n_suitable >= 2) {
+            break;
+          }
+        }
+        if (n_suitable < 2) {
+          continue;
+        }
+
         int routeIdx1 = 0;
         int routeIdx2 = 0;
 
         while (routeIdx1 == routeIdx2 || routeList.routes[routeIdx1].length < 4 ||
             routeList.routes[routeIdx2].length < 4) {
-          routeIdx1 = randIntBetween(rand, 0, routeList.routes.length - 1);
-          routeIdx2 = randIntBetween(rand, 0, routeList.routes.length - 1);
+          routeIdx1 = randIntBetween(rand, 0, routeList.routes.length);
+          routeIdx2 = randIntBetween(rand, 0, routeList.routes.length);
         }
 
         Route route1 = routeList.routes[routeIdx1];
