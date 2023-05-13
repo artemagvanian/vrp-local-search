@@ -527,8 +527,8 @@ public class VRPInstanceSLS extends VRPInstance {
 
     System.out.println("Routes: " + routeList.routes.length);
     for (Route route : routeList.routes) {
-      for (int customer : route.customers) {
-        System.out.print(customer + " ");
+      for (int i = 0; i < route.length; i++) {
+        System.out.print(route.customers[i] + " ");
       }
       System.out.println();
     }
@@ -538,8 +538,8 @@ public class VRPInstanceSLS extends VRPInstance {
     flattenedList.add(0); // NOTE: 1 HERE IF PROVED OPTIMAL, ELSE 0
 
     for (Route route : routeList.routes) {
-      for (Integer customer : route.customers) {
-        flattenedList.add(customer);
+      for (int i = 0; i < route.length; i++) {
+        flattenedList.add(route.customers[i]);
       }
     }
 

@@ -62,8 +62,8 @@ public class Main {
       writer.write(instanceHeader);
       // Serialize routes one-by-one.
       for (Route route : incompleteInstance.bestIncumbent.routes) {
-        for (Integer customer : route.customers) {
-          writer.write(customer + " ");
+        for (int i = 0; i < route.length; i++) {
+          writer.write(route.customers[i] + " ");
         }
         writer.write("\n");
       }
