@@ -13,15 +13,17 @@ public class BestRandom2ICalculator extends InterchangeCalculator {
 
   private final int routeIdx1;
   private final int numAttempts;
+  private final Random rand;
 
   public BestRandom2ICalculator(RouteList routeList, RouteList incumbent,
       double excessCapacityPenaltyCoefficient, double customerUsePenaltyCoefficient,
       int currentIteration, List<TabuItem> shortTermMemory, boolean firstBestFirst, int routeIdx1,
-      int numAttempts) {
+      int numAttempts, Random rand) {
     super(routeList, incumbent, excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient,
         shortTermMemory, firstBestFirst, currentIteration);
     this.routeIdx1 = routeIdx1;
     this.numAttempts = numAttempts;
+    this.rand = rand;
   }
 
   public static int randIntBetween(Random rand, int origin, int bound) {
@@ -70,8 +72,6 @@ public class BestRandom2ICalculator extends InterchangeCalculator {
     Interchange interchange = new Interchange(
         routeIdx1, new Insertion[]{new Insertion(0, 0), new Insertion(0, 0)},
         0, new Insertion[]{new Insertion(0, 0), new Insertion(0, 0)});
-
-    Random rand = new Random();
 
     Route route1 = routeList.routes[routeIdx1];
 
