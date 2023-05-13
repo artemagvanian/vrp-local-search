@@ -3,23 +3,21 @@ package solver.ls.data;
 import static solver.ls.incremental.EdgeDeltaCalculators.edgeDelta;
 import static solver.ls.incremental.EdgeDeltaCalculators.performRawInterchange;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 
 public class RouteList implements Cloneable {
 
   private final double[][] distances;
   private final int[] demandOfCustomer;
   private final int vehicleCapacity;
-  private final List<Integer> longTermMemory;
+  private final int[] longTermMemory;
   private final int numCustomers;
-  public List<Route> routes;
-
+  public Route[] routes;
   public double length;
   private int excessCapacity;
 
-  public RouteList(List<Route> routes, double length, double[][] distances, int[] demandOfCustomer,
-      int vehicleCapacity, List<Integer> longTermMemory, int numCustomers,
+  public RouteList(Route[] routes, double length, double[][] distances, int[] demandOfCustomer,
+      int vehicleCapacity, int[] longTermMemory, int numCustomers,
       int excessCapacity) {
     this.routes = routes;
     this.length = length;
@@ -33,7 +31,7 @@ public class RouteList implements Cloneable {
 
   @Override
   public String toString() {
-    return "{" + "\"routes\": " + routes + ", \"length\": " + length + '}';
+    return "{" + "\"routes\": " + Arrays.toString(routes) + ", \"length\": " + length + '}';
   }
 
   public RouteList clone() {
@@ -43,10 +41,10 @@ public class RouteList implements Cloneable {
     } catch (CloneNotSupportedException e) {
       throw new RuntimeException(e);
     }
-    clonedRoutes.routes = new ArrayList<>();
+    clonedRoutes.routes = new Route[routes.length];
 
-    for (Route route : routes) {
-      clonedRoutes.routes.add(route.clone());
+    for (int i = 0; i < routes.length; i++) {
+      clonedRoutes.routes[i] = routes[i].clone();
     }
 
     return clonedRoutes;
@@ -56,14 +54,14 @@ public class RouteList implements Cloneable {
       double customerUsePenaltyCoefficient, int currentIteration, boolean print) {
     double customerUsePenalty = 0;
 
-    Route route1 = routes.get(interchange.routeIdx1);
-    Route route2 = routes.get(interchange.routeIdx2);
+    Route route1 = routes[interchange.routeIdx1];
+    Route route2 = routes[interchange.routeIdx2];
 
     for (Insertion insertion : interchange.insertionList1) {
-      customerUsePenalty += longTermMemory.get(route1.customers.get(insertion.fromCustomerIdx));
+      customerUsePenalty += longTermMemory[route1.customers[insertion.fromCustomerIdx]];
     }
     for (Insertion insertion : interchange.insertionList2) {
-      customerUsePenalty += longTermMemory.get(route2.customers.get(insertion.fromCustomerIdx));
+      customerUsePenalty += longTermMemory[route2.customers[insertion.fromCustomerIdx]];
     }
 
     double newLength = length + edgeDelta(interchange, this, distances);
@@ -88,13 +86,13 @@ public class RouteList implements Cloneable {
     int newCustomerDemandRoute2 = route2.demand;
 
     for (Insertion insertion : interchange.insertionList1) {
-      int customer = route1.customers.get(insertion.fromCustomerIdx);
+      int customer = route1.customers[insertion.fromCustomerIdx];
       newCustomerDemandRoute1 -= demandOfCustomer[customer];
       newCustomerDemandRoute2 += demandOfCustomer[customer];
     }
 
     for (Insertion insertion : interchange.insertionList2) {
-      int customer = route2.customers.get(insertion.fromCustomerIdx);
+      int customer = route2.customers[insertion.fromCustomerIdx];
       newCustomerDemandRoute2 -= demandOfCustomer[customer];
       newCustomerDemandRoute1 += demandOfCustomer[customer];
     }
@@ -110,20 +108,20 @@ public class RouteList implements Cloneable {
 
   public void perform(Interchange interchange) {
     length += edgeDelta(interchange, this, distances);
-    Route route1 = routes.get(interchange.routeIdx1);
-    Route route2 = routes.get(interchange.routeIdx2);
+    Route route1 = routes[interchange.routeIdx1];
+    Route route2 = routes[interchange.routeIdx2];
 
     excessCapacity = excessCapacity(interchange, route1, route2);
 
     // Update customer demands for the routes.
     for (Insertion insertion : interchange.insertionList1) {
-      int customer = route1.customers.get(insertion.fromCustomerIdx);
+      int customer = route1.customers[insertion.fromCustomerIdx];
       route1.demand -= demandOfCustomer[customer];
       route2.demand += demandOfCustomer[customer];
     }
 
     for (Insertion insertion : interchange.insertionList2) {
-      int customer = route2.customers.get(insertion.fromCustomerIdx);
+      int customer = route2.customers[insertion.fromCustomerIdx];
       route2.demand -= demandOfCustomer[customer];
       route1.demand += demandOfCustomer[customer];
     }

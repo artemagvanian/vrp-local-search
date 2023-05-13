@@ -1,6 +1,5 @@
 package solver.ls.interchanges;
 
-import java.util.ArrayList;
 import java.util.List;
 import solver.ls.data.Insertion;
 import solver.ls.data.Interchange;
@@ -23,24 +22,25 @@ public class Best0ICalculator extends InterchangeCalculator {
 
   public InterchangeResult call() {
     // Dummy interchange, to be edited later.
-    Interchange interchange = new Interchange(
-        routeIdx1, new ArrayList<>(List.of(new Insertion(0, 0))),
-        0, new ArrayList<>(List.of()));
 
-    Route route1 = routeList.routes.get(routeIdx1);
+    Interchange interchange = new Interchange(
+        routeIdx1, new Insertion[]{new Insertion(0, 0)},
+        0, new Insertion[]{});
+
+    Route route1 = routeList.routes[routeIdx1];
     // Check every route into which we can insert.
-    for (int routeIdx2 = 0; routeIdx2 < routeList.routes.size(); routeIdx2++) {
+    for (int routeIdx2 = 0; routeIdx2 < routeList.routes.length; routeIdx2++) {
       if (routeIdx2 == routeIdx1) {
         continue;
       }
       interchange.routeIdx2 = routeIdx2;
-      Route route2 = routeList.routes.get(routeIdx2);
+      Route route2 = routeList.routes[routeIdx2];
 
-      for (int customerIdxFrom = 1; customerIdxFrom < route1.customers.size() - 1;
+      for (int customerIdxFrom = 1; customerIdxFrom < route1.length - 1;
           customerIdxFrom++) {
-        interchange.insertionList1.get(0).fromCustomerIdx = customerIdxFrom;
-        for (int customerIdxTo = 1; customerIdxTo < route2.customers.size(); customerIdxTo++) {
-          interchange.insertionList1.get(0).toCustomerIdx = customerIdxTo;
+        interchange.insertionList1[0].fromCustomerIdx = customerIdxFrom;
+        for (int customerIdxTo = 1; customerIdxTo < route2.length; customerIdxTo++) {
+          interchange.insertionList1[0].toCustomerIdx = customerIdxTo;
 
           double excessCapacity = routeList.excessCapacity(interchange, route1, route2);
           // Calculate objective function and check whether it is better than the current.

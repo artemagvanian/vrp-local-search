@@ -32,7 +32,7 @@ public abstract class InterchangeCalculator implements Callable<InterchangeResul
   }
 
   protected boolean isCustomerTabu(int routeIdx, int customerIdx) {
-    int customer = routeList.routes.get(routeIdx).customers.get(customerIdx);
+    int customer = routeList.routes[routeIdx].customers[customerIdx];
     for (TabuItem item : shortTermMemory) {
       if (item.customer == customer) {
         return true;

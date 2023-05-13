@@ -41,7 +41,7 @@ public class VRPInstanceSLS extends VRPInstance {
   /**
    * Map between the customer and the number of interchanges it participated in.
    */
-  private final List<Integer> longTermMemory;
+  private final int[] longTermMemory;
   /**
    * Random number generator for the instance.
    */
@@ -114,9 +114,9 @@ public class VRPInstanceSLS extends VRPInstance {
     this.watch = watch;
     // Initialize helpers.
     shortTermMemory = new ArrayList<>();
-    longTermMemory = new ArrayList<>(numCustomers);
+    longTermMemory = new int[numCustomers];
     for (int i = 0; i < numCustomers; i++) {
-      longTermMemory.add(0);
+      longTermMemory[i] = 0;
     }
     rand = new Random();
     // Instantiate coefficients.
@@ -169,18 +169,18 @@ public class VRPInstanceSLS extends VRPInstance {
         int routeIdx1 = 0;
         int routeIdx2 = 0;
 
-        while (routeIdx1 == routeIdx2 || routeList.routes.get(routeIdx1).customers.size() < 4 ||
-            routeList.routes.get(routeIdx2).customers.size() < 4) {
-          routeIdx1 = randIntBetween(rand, 0, routeList.routes.size() - 1);
-          routeIdx2 = randIntBetween(rand, 0, routeList.routes.size() - 1);
+        while (routeIdx1 == routeIdx2 || routeList.routes[routeIdx1].length < 4 ||
+            routeList.routes[routeIdx2].length < 4) {
+          routeIdx1 = randIntBetween(rand, 0, routeList.routes.length - 1);
+          routeIdx2 = randIntBetween(rand, 0, routeList.routes.length - 1);
         }
 
-        Route route1 = routeList.routes.get(routeIdx1);
-        Route route2 = routeList.routes.get(routeIdx2);
+        Route route1 = routeList.routes[routeIdx1];
+        Route route2 = routeList.routes[routeIdx2];
 
         Interchange interchange = new Interchange(
-            routeIdx1, new ArrayList<>(List.of(new Insertion(0, 0), new Insertion(0, 0))),
-            routeIdx2, new ArrayList<>(List.of(new Insertion(0, 0), new Insertion(0, 0))));
+            routeIdx1, new Insertion[]{new Insertion(0, 0), new Insertion(0, 0)},
+            routeIdx2, new Insertion[]{new Insertion(0, 0), new Insertion(0, 0)});
 
         populateRandom2I(interchange, route1, route2, rand);
 
@@ -365,16 +365,14 @@ public class VRPInstanceSLS extends VRPInstance {
 
     // Add the customers to the short-term memory.
     for (Insertion insertion : interchange.insertionList1) {
-      int customer = routeList.routes.get(interchange.routeIdx1).customers.get(
-          insertion.fromCustomerIdx);
+      int customer = routeList.routes[interchange.routeIdx1].customers[insertion.fromCustomerIdx];
       shortTermMemory.add(new TabuItem(customer, currentIteration + getRandomTabuTenure()));
-      longTermMemory.set(customer, longTermMemory.get(customer) + 1);
+      longTermMemory[customer]++;
     }
     for (Insertion insertion : interchange.insertionList2) {
-      int customer = routeList.routes.get(interchange.routeIdx2).customers.get(
-          insertion.fromCustomerIdx);
+      int customer = routeList.routes[interchange.routeIdx2].customers[insertion.fromCustomerIdx];
       shortTermMemory.add(new TabuItem(customer, currentIteration + getRandomTabuTenure()));
-      longTermMemory.set(customer, longTermMemory.get(customer) + 1);
+      longTermMemory[customer]++;
     }
 
     // Perform the actual interchange.
@@ -389,7 +387,7 @@ public class VRPInstanceSLS extends VRPInstance {
     List<Callable<InterchangeResult>> tasks = new ArrayList<>();
 
     // Checks every customer index.
-    for (int routeIdx1 = 0; routeIdx1 < routeList.routes.size(); routeIdx1++) {
+    for (int routeIdx1 = 0; routeIdx1 < routeList.routes.length; routeIdx1++) {
       InterchangeCalculator task = lambda.op(routeIdx1);
       tasks.add(task);
     }
@@ -485,7 +483,7 @@ public class VRPInstanceSLS extends VRPInstance {
       }
 
       if (bppModel.solve()) {
-        List<Route> initialRoutes = new ArrayList<>();
+        Route[] initialRoutes = new Route[numVehicles];
         double initialRoutesLength = 0;
 
         for (int i = 0; i < numVehicles; i++) {
@@ -507,7 +505,7 @@ public class VRPInstanceSLS extends VRPInstance {
                 customerIdx + 1)];
           }
 
-          initialRoutes.add(new Route(currentRoute, currentRouteDemand));
+          initialRoutes[i] = new Route(currentRoute, numCustomers, currentRouteDemand);
           initialRoutesLength += currentRouteLength;
         }
 
@@ -524,15 +522,10 @@ public class VRPInstanceSLS extends VRPInstance {
   // Serialize all routes into the required format.
   public String serializeRoutes(RouteList routeList) {
     // Add the vehicles that didn't go
-    int excessVehicles = numVehicles - routeList.routes.size();
-    for (int i = 0; i < excessVehicles; i++) {
-      List<Integer> excess = new ArrayList<>();
-      excess.add(0);
-      excess.add(0);
-      routeList.routes.add(new Route(excess, 0));
-    }
+    int excessVehicles = numVehicles - routeList.routes.length;
+    assert excessVehicles == 0;
 
-    System.out.println("Routes: " + routeList.routes.size());
+    System.out.println("Routes: " + routeList.routes.length);
     for (Route route : routeList.routes) {
       for (int customer : route.customers) {
         System.out.print(customer + " ");
@@ -545,7 +538,9 @@ public class VRPInstanceSLS extends VRPInstance {
     flattenedList.add(0); // NOTE: 1 HERE IF PROVED OPTIMAL, ELSE 0
 
     for (Route route : routeList.routes) {
-      flattenedList.addAll(route.customers);
+      for (Integer customer : route.customers) {
+        flattenedList.add(customer);
+      }
     }
 
     StringBuilder sb = new StringBuilder();

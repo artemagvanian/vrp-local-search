@@ -1,6 +1,7 @@
 package solver.ls.incremental;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import solver.ls.data.Insertion;
@@ -30,14 +31,14 @@ public class EdgeDeltaCalculators {
 
   private static double delta0I(Route route1, Route route2, Interchange interchange,
       double[][] distances) {
-    Insertion insertion = interchange.insertionList1.get(0);
+    Insertion insertion = interchange.insertionList1[0];
 
-    int customer = route1.customers.get(insertion.fromCustomerIdx);
-    int currentLeftNeighbor = route1.customers.get(insertion.fromCustomerIdx - 1);
-    int currentRightNeighbor = route1.customers.get(insertion.fromCustomerIdx + 1);
+    int customer = route1.customers[insertion.fromCustomerIdx];
+    int currentLeftNeighbor = route1.customers[insertion.fromCustomerIdx - 1];
+    int currentRightNeighbor = route1.customers[insertion.fromCustomerIdx + 1];
 
-    int futureLeftNeighbor = route2.customers.get(insertion.toCustomerIdx - 1);
-    int futureRightNeighbor = route2.customers.get(insertion.toCustomerIdx);
+    int futureLeftNeighbor = route2.customers[insertion.toCustomerIdx - 1];
+    int futureRightNeighbor = route2.customers[insertion.toCustomerIdx];
 
     double edgePositiveDelta =
         distances[customer][futureLeftNeighbor] + distances[customer][futureRightNeighbor]
@@ -59,16 +60,16 @@ public class EdgeDeltaCalculators {
 
   private static double delta1I(Route route1, Route route2, Interchange interchange,
       double[][] distances) {
-    Insertion insertion1 = interchange.insertionList1.get(0);
-    Insertion insertion2 = interchange.insertionList2.get(0);
+    Insertion insertion1 = interchange.insertionList1[0];
+    Insertion insertion2 = interchange.insertionList2[0];
 
-    int customer1 = route1.customers.get(insertion1.fromCustomerIdx);
-    int customer1LeftNeighbor = route1.customers.get(insertion1.fromCustomerIdx - 1);
-    int customer1RightNeighbor = route1.customers.get(insertion1.fromCustomerIdx + 1);
+    int customer1 = route1.customers[insertion1.fromCustomerIdx];
+    int customer1LeftNeighbor = route1.customers[insertion1.fromCustomerIdx - 1];
+    int customer1RightNeighbor = route1.customers[insertion1.fromCustomerIdx + 1];
 
-    int customer2 = route2.customers.get(insertion2.fromCustomerIdx);
-    int customer2LeftNeighbor = route2.customers.get(insertion2.fromCustomerIdx - 1);
-    int customer2RightNeighbor = route2.customers.get(insertion2.fromCustomerIdx + 1);
+    int customer2 = route2.customers[insertion2.fromCustomerIdx];
+    int customer2LeftNeighbor = route2.customers[insertion2.fromCustomerIdx - 1];
+    int customer2RightNeighbor = route2.customers[insertion2.fromCustomerIdx + 1];
 
     double extractionDelta =
         distances[customer1LeftNeighbor][customer1RightNeighbor]
@@ -78,21 +79,21 @@ public class EdgeDeltaCalculators {
             - distances[customer2LeftNeighbor][customer2]
             - distances[customer2RightNeighbor][customer2];
 
-    int customer1FutureLeftNeighbor = route2.customers.get(
+    int customer1FutureLeftNeighbor = route2.customers[
         insertion1.toCustomerIdx - 1 < insertion2.fromCustomerIdx ? insertion1.toCustomerIdx - 1
-            : insertion1.toCustomerIdx);
+            : insertion1.toCustomerIdx];
 
-    int customer1FutureRightNeighbor = route2.customers.get(
+    int customer1FutureRightNeighbor = route2.customers[
         insertion1.toCustomerIdx < insertion2.fromCustomerIdx ? insertion1.toCustomerIdx
-            : insertion1.toCustomerIdx + 1);
+            : insertion1.toCustomerIdx + 1];
 
-    int customer2FutureLeftNeighbor = route1.customers.get(
+    int customer2FutureLeftNeighbor = route1.customers[
         insertion2.toCustomerIdx - 1 < insertion1.fromCustomerIdx ? insertion2.toCustomerIdx - 1
-            : insertion2.toCustomerIdx);
+            : insertion2.toCustomerIdx];
 
-    int customer2FutureRightNeighbor = route1.customers.get(
+    int customer2FutureRightNeighbor = route1.customers[
         insertion2.toCustomerIdx < insertion1.fromCustomerIdx ? insertion2.toCustomerIdx
-            : insertion2.toCustomerIdx + 1);
+            : insertion2.toCustomerIdx + 1];
 
     double insertionDelta =
         -distances[customer1FutureLeftNeighbor][customer1FutureRightNeighbor]
@@ -114,13 +115,13 @@ public class EdgeDeltaCalculators {
 
   private static double extractionCost2I(Route route, Insertion insertion1,
       Insertion insertion2, double[][] distances) {
-    int customer1 = route.customers.get(insertion1.fromCustomerIdx);
-    int customer1LeftNeighbor = route.customers.get(insertion1.fromCustomerIdx - 1);
-    int customer1RightNeighbor = route.customers.get(insertion1.fromCustomerIdx + 1);
+    int customer1 = route.customers[insertion1.fromCustomerIdx];
+    int customer1LeftNeighbor = route.customers[insertion1.fromCustomerIdx - 1];
+    int customer1RightNeighbor = route.customers[insertion1.fromCustomerIdx + 1];
 
-    int customer2 = route.customers.get(insertion2.fromCustomerIdx);
-    int customer2LeftNeighbor = route.customers.get(insertion2.fromCustomerIdx - 1);
-    int customer2RightNeighbor = route.customers.get(insertion2.fromCustomerIdx + 1);
+    int customer2 = route.customers[insertion2.fromCustomerIdx];
+    int customer2LeftNeighbor = route.customers[insertion2.fromCustomerIdx - 1];
+    int customer2RightNeighbor = route.customers[insertion2.fromCustomerIdx + 1];
 
     double extractionDelta = 0;
 
@@ -200,10 +201,10 @@ public class EdgeDeltaCalculators {
     }
 
     if (Math.abs(insertion1.toCustomerIdx - insertion2.toCustomerIdx) > 1) {
-      int customer1FutureLeftNeighbor = intoRoute.customers.get(customer1FutureLeftNeighborIdx);
-      int customer1FutureRightNeighbor = intoRoute.customers.get(customer1FutureRightNeighborIdx);
-      int customer2FutureLeftNeighbor = intoRoute.customers.get(customer2FutureLeftNeighborIdx);
-      int customer2FutureRightNeighbor = intoRoute.customers.get(customer2FutureRightNeighborIdx);
+      int customer1FutureLeftNeighbor = intoRoute.customers[customer1FutureLeftNeighborIdx];
+      int customer1FutureRightNeighbor = intoRoute.customers[customer1FutureRightNeighborIdx];
+      int customer2FutureLeftNeighbor = intoRoute.customers[customer2FutureLeftNeighborIdx];
+      int customer2FutureRightNeighbor = intoRoute.customers[customer2FutureRightNeighborIdx];
 
       return -distances[customer1FutureLeftNeighbor][customer1FutureRightNeighbor]
           + distances[customer1FutureLeftNeighbor][customer1]
@@ -218,8 +219,8 @@ public class EdgeDeltaCalculators {
       int rightNeighborIdx = Math.min(customer1FutureRightNeighborIdx,
           customer2FutureRightNeighborIdx);
 
-      int leftNeighbor = intoRoute.customers.get(leftNeighborIdx);
-      int rightNeighbor = intoRoute.customers.get(rightNeighborIdx);
+      int leftNeighbor = intoRoute.customers[leftNeighborIdx];
+      int rightNeighbor = intoRoute.customers[rightNeighborIdx];
 
       if (insertion1.toCustomerIdx < insertion2.toCustomerIdx) {
         return -distances[leftNeighbor][rightNeighbor]
@@ -237,11 +238,11 @@ public class EdgeDeltaCalculators {
 
   private static double delta2I(Route route1, Route route2, Interchange interchange,
       double[][] distances) {
-    Insertion insertion11 = interchange.insertionList1.get(0);
-    Insertion insertion12 = interchange.insertionList1.get(1);
+    Insertion insertion11 = interchange.insertionList1[0];
+    Insertion insertion12 = interchange.insertionList1[1];
 
-    Insertion insertion21 = interchange.insertionList2.get(0);
-    Insertion insertion22 = interchange.insertionList2.get(1);
+    Insertion insertion21 = interchange.insertionList2[0];
+    Insertion insertion22 = interchange.insertionList2[1];
 
     double route1ExtractionCost = extractionCost2I(route1, insertion11, insertion12,
         distances);
@@ -250,13 +251,13 @@ public class EdgeDeltaCalculators {
 
     double route1InsertionCost = insertionCost2I(route1, insertion21, insertion22,
         insertion11.fromCustomerIdx, insertion12.fromCustomerIdx,
-        route2.customers.get(insertion21.fromCustomerIdx),
-        route2.customers.get(insertion22.fromCustomerIdx), distances);
+        route2.customers[insertion21.fromCustomerIdx],
+        route2.customers[insertion22.fromCustomerIdx], distances);
 
     double route2InsertionCost = insertionCost2I(route2, insertion11, insertion12,
         insertion21.fromCustomerIdx, insertion22.fromCustomerIdx,
-        route1.customers.get(insertion11.fromCustomerIdx),
-        route1.customers.get(insertion12.fromCustomerIdx), distances);
+        route1.customers[insertion11.fromCustomerIdx],
+        route1.customers[insertion12.fromCustomerIdx], distances);
 
     // Sanity check.
     /*
@@ -268,50 +269,68 @@ public class EdgeDeltaCalculators {
   }
 
   public static void performRawInterchange(Route route1, Route route2,
-      List<Insertion> insertionList1,
-      List<Insertion> insertionList2) {
+      Insertion[] insertionList1,
+      Insertion[] insertionList2) {
 
     List<RemovedCustomer> movedCustomers1 = new ArrayList<>();
     List<RemovedCustomer> movedCustomers2 = new ArrayList<>();
 
     // Sort in the decreasing order by fromCustomerIdx.
-    insertionList1.sort((ins1, ins2) -> ins2.fromCustomerIdx - ins1.fromCustomerIdx);
+    Arrays.sort(insertionList1, (ins1, ins2) -> ins2.fromCustomerIdx - ins1.fromCustomerIdx);
     for (Insertion insertion : insertionList1) {
-      movedCustomers1.add(
-          new RemovedCustomer(route1.customers.remove(insertion.fromCustomerIdx), insertion));
+      RemovedCustomer customer = new RemovedCustomer(route1.customers[insertion.fromCustomerIdx],
+          insertion);
+      for (int i = insertion.fromCustomerIdx; i < route1.length; i++) {
+        route1.customers[i] = route1.customers[i + 1];
+      }
+      route1.length--;
+      movedCustomers1.add(customer);
     }
 
     // Sort in the decreasing order by fromCustomerIdx.
-    insertionList2.sort((ins1, ins2) -> ins2.fromCustomerIdx - ins1.fromCustomerIdx);
+    Arrays.sort(insertionList2, (ins1, ins2) -> ins2.fromCustomerIdx - ins1.fromCustomerIdx);
     for (Insertion insertion : insertionList2) {
-      movedCustomers2.add(
-          new RemovedCustomer(route2.customers.remove(insertion.fromCustomerIdx), insertion));
+      RemovedCustomer customer = new RemovedCustomer(route2.customers[insertion.fromCustomerIdx],
+          insertion);
+      for (int i = insertion.fromCustomerIdx; i < route2.length; i++) {
+        route2.customers[i] = route2.customers[i + 1];
+      }
+      route2.length--;
+      movedCustomers2.add(customer);
     }
 
     // Sort in the increasing order by toCustomerIdx.
     movedCustomers1.sort(Comparator.comparingInt(ins -> ins.insertion.toCustomerIdx));
     for (RemovedCustomer removedCustomer : movedCustomers1) {
-      route2.customers.add(removedCustomer.insertion.toCustomerIdx, removedCustomer.customer);
+      for (int i = route2.length - 1; i >= removedCustomer.insertion.toCustomerIdx; i--) {
+        route2.customers[i + 1] = route2.customers[i];
+      }
+      route2.length++;
+      route2.customers[removedCustomer.insertion.toCustomerIdx] = removedCustomer.customer;
     }
 
     // Sort in the increasing order by toCustomerIdx.
     movedCustomers2.sort(Comparator.comparingInt(ins -> ins.insertion.toCustomerIdx));
     for (RemovedCustomer removedCustomer : movedCustomers2) {
-      route1.customers.add(removedCustomer.insertion.toCustomerIdx, removedCustomer.customer);
+      for (int i = route1.length - 1; i >= removedCustomer.insertion.toCustomerIdx; i--) {
+        route1.customers[i + 1] = route1.customers[i];
+      }
+      route1.length++;
+      route1.customers[removedCustomer.insertion.toCustomerIdx] = removedCustomer.customer;
     }
 
   }
 
   public static double edgeDelta(Interchange interchange, RouteList routeList,
       double[][] distances) {
-    Route route1 = routeList.routes.get(interchange.routeIdx1);
-    Route route2 = routeList.routes.get(interchange.routeIdx2);
+    Route route1 = routeList.routes[interchange.routeIdx1];
+    Route route2 = routeList.routes[interchange.routeIdx2];
 
-    if (interchange.insertionList1.size() == 1 && interchange.insertionList2.size() == 0) {
+    if (interchange.insertionList1.length == 1 && interchange.insertionList2.length == 0) {
       return delta0I(route1, route2, interchange, distances);
-    } else if (interchange.insertionList1.size() == 1 && interchange.insertionList2.size() == 1) {
+    } else if (interchange.insertionList1.length == 1 && interchange.insertionList2.length == 1) {
       return delta1I(route1, route2, interchange, distances);
-    } else if (interchange.insertionList1.size() == 2 && interchange.insertionList2.size() == 2) {
+    } else if (interchange.insertionList1.length == 2 && interchange.insertionList2.length == 2) {
       return delta2I(route1, route2, interchange, distances);
     } else {
       throw new IllegalArgumentException("Can only process (1,0), (1,1), (2,2) -interchanges.");
