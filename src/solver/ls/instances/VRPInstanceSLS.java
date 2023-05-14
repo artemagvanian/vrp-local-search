@@ -9,7 +9,6 @@ import ilog.concert.IloNumVar;
 import ilog.cplex.IloCplex;
 import ilog.cplex.IloCplex.Param;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Callable;
@@ -119,7 +118,7 @@ public class VRPInstanceSLS extends VRPInstance {
     for (int i = 0; i < numCustomers; i++) {
       longTermMemory[i] = 0;
     }
-    rand = new Random(2951);
+    rand = new Random();
     // Instantiate coefficients.
     largeNeighborhoodSize = params.largeNeighborhoodBaseSize;
     excessCapacityPenaltyCoefficient = params.excessCapacityBasePenalty;
@@ -218,7 +217,7 @@ public class VRPInstanceSLS extends VRPInstance {
         best2Interchange = searchNeighborhood(
             (routeIdx) -> new BestRandom2ICalculator(routeList, incumbent,
                 excessCapacityPenaltyCoefficient, customerUsePenaltyCoefficient, currentIteration,
-                shortTermMemory, params.firstBestFirst, routeIdx, largeNeighborhoodSize, rand));
+                shortTermMemory, params.firstBestFirst, routeIdx, largeNeighborhoodSize));
 
         // Get insertion objectives, if possible.
         double objective0I = best0Interchange == null ? Double.POSITIVE_INFINITY
@@ -356,7 +355,7 @@ public class VRPInstanceSLS extends VRPInstance {
         System.out.println("\tCU Penalty Coefficient: " + customerUsePenaltyCoefficient);
         System.out.println("-->  MEMORY");
         System.out.println("\tShort-term memory: " + shortTermMemory);
-        System.out.println("\tLong-term memory: " + Arrays.toString(longTermMemory));
+        System.out.println("\tLong-term memory: " + longTermMemory);
         System.out.println("-->  NBHD & RESTARTS");
         System.out.println("\tCurrent 2-interchange trials #: " + largeNeighborhoodSize);
         System.out.println(
