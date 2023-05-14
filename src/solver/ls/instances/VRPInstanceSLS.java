@@ -118,7 +118,7 @@ public class VRPInstanceSLS extends VRPInstance {
     for (int i = 0; i < numCustomers; i++) {
       longTermMemory[i] = 0;
     }
-    rand = new Random();
+    rand = new Random(29510);
     // Instantiate coefficients.
     largeNeighborhoodSize = params.largeNeighborhoodBaseSize;
     excessCapacityPenaltyCoefficient = params.excessCapacityBasePenalty;

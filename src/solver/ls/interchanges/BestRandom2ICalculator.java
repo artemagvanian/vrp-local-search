@@ -71,7 +71,7 @@ public class BestRandom2ICalculator extends InterchangeCalculator {
         routeIdx1, new Insertion[]{new Insertion(0, 0), new Insertion(0, 0)},
         0, new Insertion[]{new Insertion(0, 0), new Insertion(0, 0)});
 
-    Random rand = new Random();
+    Random rand = new Random(29510);
 
     Route route1 = routeList.routes[routeIdx1];
 
